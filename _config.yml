@@ -1,0 +1,16 @@
+theme: minima
+title: Iwilare
+author: Andrea Laretto
+email: iwilare@gmail.com
+description: >
+  Personal blog about programming, mathematics, philosophy, anything
+  I think is both worth writing about from my perspective.
+
+title: iwilare
+minima:
+  social_links:
+    twitter: iwilare
+    github: iwilare
+    instagram: iwilare
+    telegram: iwilare
+    rss: rss
