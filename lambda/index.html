@@ -1,21 +1,23 @@
----
-title: Writing a minimal JavaScript interpreter for λ-calculus in less than 60 characters
----
+<html>
+<meta charset="utf-8">        
+<title>Writing a minimal JavaScript interpreter for λ-calculus in less than 60 characters</title>
+<xmp theme="readable">
+# Writing a minimal JavaScript interpreter for λ-calculus in less than 60 characters
+
 This post takes inspiration from the wonderful article [The smallest lambda interpreter in JavaScript](http://m1el.github.io/smallest-lambda-eval/) and the related video [William Byrd on "The Most Beautiful Program Ever Written"](https://www.youtube.com/watch?v=OyfBQmvr2Hc).
-Today I decided to try writing myself such a minimalistic interpreter in pure JavaScript, and trying to golf my way through it.
+I decided to try writing myself such a minimalistic interpreter in pure JavaScript, and trying to golf my way through it.
 
 ## Rules
 
-1. There is no restriction on the convention, syntax and structure of the input terms, except for the fact that they can't contain functions nor execute code. 
-2. The syntax should be able to represent (in a unique way) the three basic kind of terms in λ-calculus: variables, applications, abstractions.
+1. There are no restrictions on the convention, syntax and structure of the input terms, except for the fact that they can't contain functions nor execute code.
+2. The syntax should be able to consistently represent the three fundamental kinds of terms in λ-calculus: variables, applications, and abstractions.
 3. Application must take care of bound and unbound variables appropriately, without creating semantic-breaking substitutions (e.g. capturing unbound variables).
 
-Since there are no restrictions on input structure as long as it's plain data, both [De Bruijn](https://en.wikipedia.org/wiki/De_Bruijn_notation) indices and classic named variables are allowed. 
+Since there are no restrictions on input structure as long as it constitutes plain data, both [De Bruijn](https://en.wikipedia.org/wiki/De_Bruijn_notation) indices and classic named variables are allowed.
 
 ## Original version
 
-Initially, I wanted to see if I could strip down the original code from the blog itself.
-There are many obvious size optimizations one could do on this code.
+Initially, I wanted to see if I could strip down the original code from the blog itself. There are many obvious size optimizations one could do on this code.
 
 ```js
 // Credit to http://m1el.github.io/smallest-lambda-eval/
@@ -34,7 +36,7 @@ function Eval(prog, env) {
 }
 ```
 
-And the original author themselves does an initial syntactic reduction, without changing any semantics:
+The original author themselves does an initial syntactic reduction, without performing any significant semantic change:
 
 ```js
 // Credit to http://m1el.github.io/smallest-lambda-eval/
@@ -44,17 +46,17 @@ Eval = function E(p, e) {
 }
 ```
 
-For reference, the representation the author uses is with variables being plain numbers and indicating De Bruijn indices starting from 1, and then using `[0, <body>]` for λ-abstractions and `[<function>, <argument>]` for applications.
+For reference, the representation the author uses is with variables being plain numbers and indicating De Bruijn indices starting from 1. It then uses `[0, <body>]` for λ-abstractions, and `[<function>, <argument>]` for applications.
 
-Their initial desire is to be able to minify the snippet to less than 140 in order to publish it on Twitter. Unfortunately, the code itself with indentation as it is does not even fit in 140 characters, since it reaches *142 characters*.
+Their initial desire is to be able to minify the snippet to less than 140 in order to publish it on Twitter. Unfortunately, the code itself as it is does not fit in 140 characters, since it reaches 142 characters.
 
 We'll try and see if we can improve this.
 
 ## Initial reduction
 
-We'll call our variable names with `e` for "expression", and `Γ` for the environment, mirroring its classic use in type theory as context. 
+We'll call our variable names with `e` for "expression", and `Γ` for the environment, mirroring its classic use in type theory as context.
 
-Let's first minify the code without doing any particularly difficult simplification. First, we can take out unneeded spaces and then obviously rename `Eval` to its shorter version `E`. Note that we can easily take out the `function` by using a simple anonymous lambda, obtaining:
+Let's first minify the code without doing any particularly tricky simplification. First, we can take out unneeded spaces and then obviously rename `Eval` to its shorter version `E`. Note that we can easily take out the `function` by using a simple anonymous lambda, obtaining:
 
 ```js
 E=E(p,e){if(typeof p=='number'){while(--p){e=e[1]}return e[0]}return p[0]==0?(a)=>E(p[1],[a,e]):E(p[0],e)(E(p[1],e))}
@@ -75,7 +77,7 @@ The first intuition I had was that we can cleverly try inlining the loop as an a
 E = (e,Γ) => {
     if(e == 1)
         return Γ[0]
-    else if(e > 0) 
+    else if(e > 0)
         return E(e-1, Γ[1])
     else if(e[0] == 0)
         return a => E(e[1], [a,Γ])
@@ -90,7 +92,7 @@ Which inlined looks like this:
 E=(e,Γ)=>e==1?Γ[0]:e>0?E(e-1,Γ[1]):e[0]==0?a=>E(e[1],[a,Γ]):E(e[0],Γ)(E(e[1],Γ))
 ```
 
-We can use some simple equivalences to reduce it further: by reusing the number type check tricker applied earlier, we can replace `e>0` with `+e`; since checking `+e` also check that `e` is a number, we can move the checks related to numbers inside the first branch. 
+We can use some simple equivalences to reduce it further: by reusing the number type check tricker applied earlier, we can replace `e>0` with `+e`; since checking `+e` also check that `e` is a number, we can move the checks related to numbers inside the first branch.
 
 ```js
 E=(e,Γ)=>+e?e==1?Γ[0]:E(e-1,Γ[1]):e[0]==0?x=>E(e[1],[x,Γ]):E(e[0],Γ)(E(e[1],Γ))
@@ -129,7 +131,7 @@ This brings us at *69 characters*.
 
 I then tried temporarily scrapping the De Bruijn indices in order to see if the usual named representation could take us any further, since it doesn't need to iterate through the environment when searching a variable, and we can instead access it directly.
 
-Switching to a named representation requires us to rethink the environment: the first thing I thought of was trying using the higher-order representation for the environment logic, directly inspired by the [William Byrd lecture](https://www.youtube.com/watch?v=OyfBQmvr2Hc), since it seemed to be quite compact. The environment is simply extended by a lambda that checks if the variable looked up is the same as the new one given, and if not, it handles the lookup to the underlying older environment. 
+Switching to a named representation requires us to rethink the environment: the first thing I thought of was trying using the higher-order representation for the environment logic, directly inspired by the [William Byrd lecture](https://www.youtube.com/watch?v=OyfBQmvr2Hc), since it seemed to be quite compact. The environment is simply extended by a lambda that checks if the variable looked up is the same as the new one given, and if not, it handles the lookup to the underlying older environment.
 We can now refer to the value of a variable in the environment with a direct access using `Γ(e)`, instead of having to get to the variable by reducing the environment step by step. This syntax incredibily helps the character count, since we don't need the iteration logic anymore, therefore allowing us to scrape the directly recursive branch.
 
 The code with the environment-augmented lambda now looks like this:
@@ -200,13 +202,13 @@ By combining these two points, we finally get:
 E=(e,Γ=[])=>e.f?E(e.f,Γ)(E(e.x,Γ)):e.λ?x=>E(e.λ,[x,...Γ]):Γ[e]
 ```
 
-However, the workaround on checking first the object fields got me thinking: what if instead of directly using the number as test we could actually change the representation appropriately to, in a way, "encapsulate" the numeric value so that it can be safely checked?
+However, the workaround on checking first the object fields made me think: what if instead of directly using the number as test we could actually change the representation appropriately in order to, in a way, "encapsulate" the numeric value so that it can be safely checked?
 
-And this reasoning illuminated me and reminded me of the existence (which I can't still wrap my head around) of *array pattern matching* in JavaScript.
+This reasoning enlightened and reminded me of the existence of *array pattern matching* in JavaScript.
 
-That is, setting up a function like `([a,b],c) => ...` actually automatically takes and gives names to the two "sub-elements" of the array structure that we pass in, circumventing the need to, first of all, use field names to access the various parts of the expression!
+Array pattern matching can be simply expressed as a function `([a,b],c) => ...` which automatically takes and gives names to the two "sub-elements" of the array structure that we give as parameters. This allows us to circumvent the need to use field names to access the various parts of the expression.
 
-But we can also notice that, in fact, this representation is all that we really need to be able represent the entirety of our expression cases: 
+But we can also notice that, in fact, this representation is all that we really need to be able represent the entirety of our expression cases:
 - we can represent `[n, undefined]` as a variable with a zero-indexed De Bruijn index `n`,
 - use `[undefined, b]` to be the λ-abstraction with body `b` (where b is another non-`undefined` lambda term using this same format),
 - and finally represent application with both the two fields occupied, expressing it with `[f, x]` where `f` and `x` are both two non-`undefined` values indicating the function and the argument of the application.
@@ -217,7 +219,7 @@ The choice in the position of the arguments for the λ-abstraction is motivated 
 
 Semantically, even the checks will further simplify, since we won't be needing to check for numbers nor object fields being truthy, and we can instead act directly on the two named array elements and check if they are `undefined`.
 
-Here's the final code:
+Here is the final code:
 
 ```js
 E=([a,b],Γ=[])=>b?a?E(a,Γ)(E(b,Γ)):x=>E(b,[x,...Γ]):Γ[a]
@@ -225,17 +227,23 @@ E=([a,b],Γ=[])=>b?a?E(a,Γ)(E(b,Γ)):x=>E(b,[x,...Γ]):Γ[a]
 
 This brings us to a very surprising reduction with just *56-characters*!
 
-It seems to me that we (finally) reduced everything to its truly most barebones representation. I sincerely had no idea I could would have ended up with such a simplification, especially considering that every single reduction felt like that was it, there was no further possible way of taking away any more characters. 
-This little adventure reminds us something quite fundamental to the act of programming golfing: every step of the way feels like the end of the journey, and yet we continue discovering new paths that continue our progress to other seemingly final destinations.
+It seems to me that we (finally) reduced everything to its truly most barebones representation. I sincerely had no idea I would have ended up with such a simplification, especially considering that every single reduction felt like that was it, there was no further possible way of taking away any more characters.
 
-I feel like this last snipped highlights the fundamental concepts of λ-calculus interpretation, both in its minimal syntax:
+This last snippet highlights the fundamental concepts of λ-calculus interpretation, both in its minimal syntax:
 - variables,    `[a,]`
 - abstractions, `[,b]`
 - applications, `[a,b]`
 
-and in its naturally corresponding minimal semantics:
+and in its naturally corresponding semantics:
 - variables and environment lookup,       `Γ[a]`
 - abstractions and environment extension, `x=>E(b,[x,...Γ])`
 - applications and recursive evaluation,  `E(a,Γ)(E(b,Γ))`
 
+This little adventure reminds us about something quite fundamental to the act of programming golfing: every step of the way feels like the end of the journey, but we everytime manage to discover new paths that furthen our progress to other seemingly final destinations.
+
+You can consult the files of this small development at [lambda.js](lambda.js) and [lambda-all.js](lambda-all.js).
+
 *Thank you for reading. Please tell me if you have any further suggestions to improve this!*
+</xmp>
+<script src="https://strapdownjs.com/v/0.2/strapdown.js"></script>
+</html>

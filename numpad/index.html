@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>Numpad</title>
+        <style>
+            body {
+                margin: 0;
+            }
+
+            svg text {
+                user-select: none;
+            }
+        </style>
+        <script src="../libs/svg.js"></script>
+        <script src="../libs/SvgDesk.js"></script>
+        <script src="../libs/TensorIterator.js"></script>
+    </head>
+    <body>
+        <div id="svg"></div>
+        <script src="Numpad.js"></script>
+        <script>
+            const svg = SVG('svg').size('100%','100%')
+
+            const TauDigits = `
+                2831853071 7958647692 5286766559 0057683943 3879875021 1641949889 1846156328 1257241799 7256069650 6842341359
+                6429617302 6564613294 1876892191 0116446345 0718816256 9622349005 6820540387 7042211119 2892458979 0986076392
+                8857621951 3318668922 5695129646 7573566330 5424038182 9129713384 6920697220 9086532964 2678721452 0498282547
+                4491740132 1263117634 9763041841 9256585081 8343072873 5785180720 0226610610 9764093304 2768293903 8830232188
+                6611454073 1519183906 1843722347 6386522358 6210237096 1489247599 2549913470 3771505449 7824558763 6602389825
+                9667346724 8813132861 7204278989 2790449474 3814043597 2188740554 1078434352 5863535047 6934963693 5338810264
+                0011362542 9052712165 5571542685 5155792183 4727435744 2936881802 4499068602 9309917074 2101584559 3785178470
+                8403991222 4258043921 7280688363 1962725954 9542619921 0374144226 9999999674
+            `.replace(/\s/g, '')
+            
+            const TauPaths = `
+                2831853071 7958647 6925 2867 6655900
+                5768 3943 3879 8750 21164
+                19498 891 8461 56328 1257
+                24179 972560 69650 684234 1359
+
+                64296 17302 65646 13294 1876
+                8921 91011 64463 45071 88162
+                569622 34900 5682 0540 38770
+                422111192 89245 897 90986 076392
+
+                885 76219 51331 86689 225695
+                12964 6757 35663 30542 40381
+                829129 713384 69206 972209 086532
+                96426 78721452 0498 282 547
+
+                44917 4013 21263 11763 4976
+                30418 419256 585 08183 4307
+                2873 57851 80720 02266 1061
+                0976 4093 3042768 29390 38830 232188
+                661145 4073 15191 83906 1843 7223 4763 865223 586210 2370 
+                9614 89247 59925 49913 4703 771505 4497824 558763 66023 89825
+            `.trim().split(/\s+/).map(s => s.split('').map(n => parseInt(n)))
+
+            console.assert(TauDigits.startsWith(TauPaths.flat().reduce((a, b) => a + b, '')))
+
+            const size = Math.min(window.innerHeight, window.innerWidth)
+            const border = size * 0.1
+
+            SvgDesk(svg, numpadTable(TauPaths, size - 2 * border, NumpadCalculator, 4, 5), 0.1)
+
+            function numpadTable(paths, width, numpadStructure, n, m) {
+                const table = svg.group()
+                const separation = 2
+                    , size   = width/(2*m+separation*(m-1))
+                    , dx     = separation*size
+                    , dy     = 0.7*separation*size
+
+                TensorArrayIterator(paths, [Infinity, n, m], (path, page, i, j) =>
+                    void Numpad(table, path, size, numpadStructure)
+                            .move((2*size + dx) * j, m * (2.75*size + dy) * page + (3*size + dy) * i))
+                return table
+            }
+        </script>
+    </body>
+</html>
