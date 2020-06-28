@@ -5,7 +5,7 @@
 # Writing a minimal JavaScript interpreter for λ-calculus in less than 60 characters
 
 This post takes inspiration from the wonderful article [The smallest lambda interpreter in JavaScript](http://m1el.github.io/smallest-lambda-eval/) and the related video [William Byrd on "The Most Beautiful Program Ever Written"](https://www.youtube.com/watch?v=OyfBQmvr2Hc).
-I decided to try writing myself such a minimalistic interpreter in pure JavaScript, and trying to golf my way through it.
+I decided to try writing myself such a minimalistic interpreter in vanilla JavaScript, and trying to golf my way through it.
 
 ## Rules
 
@@ -17,7 +17,7 @@ Since there are no restrictions on input structure as long as it constitutes pla
 
 ## Original version
 
-Initially, I wanted to see if I could strip down the original code from the blog itself. There are many obvious size optimizations one could do on this code.
+Initially, I wanted to see if I could strip down the original code from the blog. There are many obvious size optimizations one could do on this code:
 
 ```js
 // Credit to http://m1el.github.io/smallest-lambda-eval/
@@ -46,15 +46,15 @@ Eval = function E(p, e) {
 }
 ```
 
-For reference, the representation the author uses is with variables being plain numbers and indicating De Bruijn indices starting from 1. It then uses `[0, <body>]` for λ-abstractions, and `[<function>, <argument>]` for applications.
+For reference, the representation they use is with variables being plain numbers and representing De Bruijn indices starting from 1. It then uses `[0, <body>]` for λ-abstractions, and `[<function>, <argument>]` for applications.
 
-Their initial desire is to be able to minify the snippet to less than 140 in order to publish it on Twitter. Unfortunately, the code itself as it is does not fit in 140 characters, since it reaches 142 characters.
+Their initial desire is to be able to minify the snippet to less than 140 in order to publish it on Twitter. Unfortunately, the code as it is does not fit in 140 characters, since it reaches 142 characters.
 
 We'll try and see if we can improve this.
 
 ## Initial reduction
 
-We'll call our variable names with `e` for "expression", and `Γ` for the environment, mirroring its classic use in type theory as context.
+In our code, the variable names use `e` for "expression" and `Γ` for the environment, mirroring in this latter case its classic use in type theory as type context.
 
 Let's first minify the code without doing any particularly tricky simplification. First, we can take out unneeded spaces and then obviously rename `Eval` to its shorter version `E`. Note that we can easily take out the `function` by using a simple anonymous lambda, obtaining:
 
@@ -62,16 +62,16 @@ Let's first minify the code without doing any particularly tricky simplification
 E=E(p,e){if(typeof p=='number'){while(--p){e=e[1]}return e[0]}return p[0]==0?(a)=>E(p[1],[a,e]):E(p[0],e)(E(p[1],e))}
 ```
 
-We can now try doing our first semantic reductions of the code. We can reduce the number type check using the fact that `+e` converts objects into the falsey value `NaN` (for example in the case of application and abstraction, since they will be represented either with arrays or objects) but leaves numbers untouched. We can also use that, in JavaScript as in C, `e==0` is logically equivalent to `!e` when `e` is a number. These two simplifications allow us to get to *97 characters*:
+We can now try doing our first semantic reductions of the code. We can reduce the number type check using the fact that `+e` converts objects into the falsey value `NaN` but leaves numbers untouched. This works in the case of application and abstraction, since they are represented either with arrays or objects and therefore will be checked as `NaN`. We can also exploit the fact that, in JavaScript as in C, `e==0` is logically equivalent to `!e` when `e` is a number. These two simplifications allow to reach *97 characters*:
 
 ```js
 E=(e,Γ)=>{if(+e){while(--e){Γ=Γ[1]}return Γ[0]}return e[0]?E(e[0],Γ)(E(e[1],Γ)):x=>E(e[1],[x,Γ])}
 ```
 
-As a first big reduction analysis, we can notice how the major obstacle in compressing the snippet is the first line of the original function with the explicit use of the "while" and "return" keywords.
+As a first big reduction analysis, we can notice how the major obstacle in compressing the snippet is the first line of the original function, with the explicit use of the "while" and "return" keywords.
 This looping seems to be quite intrinsic to the structure of the lambda representation itself, since we need to whittle down the environment on its second element of the tuple in order to get the desired De Bruijn index.
 
-The first intuition I had was that we can cleverly try inlining the loop as an argument of the function itself, while recursively decreasing the argument (and the environment) if we can verify that it's a number. In expanded code:
+The first intuition I had was that we can try inlining the loop as an argument of the function itself, while recursively decreasing the argument (and the environment) if we can verify that it's a number. In expanded code:
 
 ```js
 E = (e,Γ) => {
@@ -92,7 +92,7 @@ Which inlined looks like this:
 E=(e,Γ)=>e==1?Γ[0]:e>0?E(e-1,Γ[1]):e[0]==0?a=>E(e[1],[a,Γ]):E(e[0],Γ)(E(e[1],Γ))
 ```
 
-We can use some simple equivalences to reduce it further: by reusing the number type check tricker applied earlier, we can replace `e>0` with `+e`; since checking `+e` also check that `e` is a number, we can move the checks related to numbers inside the first branch.
+We can use some simple equivalences to further reduce it. By reusing the number type check tricker applied earlier, we can replace `e>0` with `+e`; since `+e` also checks that `e` is a number, we can move `e>0` inside the first branch.
 
 ```js
 E=(e,Γ)=>+e?e==1?Γ[0]:E(e-1,Γ[1]):e[0]==0?x=>E(e[1],[x,Γ]):E(e[0],Γ)(E(e[1],Γ))
@@ -110,13 +110,13 @@ And then, since the indexes start from 1 and are never 0:
 E=(e,Γ)=>+e?e<2?Γ[0]:E(e-1,Γ[1]):e[0]?E(e[0],Γ)(E(e[1],Γ)):x=>E(e[1],[x,Γ])
 ```
 
-In the first branch we actually only need the decremented index, to be used in the immediately recursive call. By decrementing the variable already in the check we can both verify if `e` is 1 and at the same time have it decreased for the next call.
+In the first branch we actually just need the decremented index, to be used in the immediately recursive call. By decrementing the variable already in the check we can both verify if `e` is 1 and at the same time have it decreased for the next call.
 
 ```js
 E=(e,Γ)=>+e?--e?E(e,Γ[1]):Γ[0]:e[0]?E(e[0],Γ)(E(e[1],Γ)):x=>E(e[1],[x,Γ])
 ```
 
-We can change and simplify the representation of the input using objects and fields instead of arrays, in order to reduce field lookup to a minimum size:
+We can simplify the representation of the input using objects and fields instead of arrays, in order to reduce field lookup to a minimum size:
 
 ```js
 E=(e,Γ)=>+e?--e?E(e,Γ[1]):Γ[0]:e.f?E(e.f,Γ)(E(e.x,Γ)):x=>E(e.λ,[x,Γ])
@@ -129,10 +129,10 @@ This brings us at *69 characters*.
 
 ## Named representation, with objects and lambdas
 
-I then tried temporarily scrapping the De Bruijn indices in order to see if the usual named representation could take us any further, since it doesn't need to iterate through the environment when searching a variable, and we can instead access it directly.
+I then tried temporarily scrapping the De Bruijn indices in order to see if the usual named representation could take us any further, since it doesn't need to iterate through the environment when searching a variable and we can instead access it directly.
 
-Switching to a named representation requires us to rethink the environment: the first thing I thought of was trying using the higher-order representation for the environment logic, directly inspired by the [William Byrd lecture](https://www.youtube.com/watch?v=OyfBQmvr2Hc), since it seemed to be quite compact. The environment is simply extended by a lambda that checks if the variable looked up is the same as the new one given, and if not, it handles the lookup to the underlying older environment.
-We can now refer to the value of a variable in the environment with a direct access using `Γ(e)`, instead of having to get to the variable by reducing the environment step by step. This syntax incredibily helps the character count, since we don't need the iteration logic anymore, therefore allowing us to scrape the directly recursive branch.
+Switching to a named representation requires us to rethink the environment: the first thing I thought of was trying using the higher-order representation for the environment logic, directly inspired by the [William Byrd lecture](https://www.youtube.com/watch?v=OyfBQmvr2Hc), since it seemed to be quite compact. The environment is simply extended by a lambda that checks if the variable looked up is the same as the new one given, and if not, it defers the lookup to the underlying older environment.
+We can now get the value of a variable in the environment with a direct lookup using `Γ(e)`, instead of having to reach the variable by reducing the environment step by step. This syntax incredibily helps the character count, since we don't need the iteration logic anymore nor the recursive branch.
 
 The code with the environment-augmented lambda now looks like this:
 
@@ -159,28 +159,29 @@ Applying the same `+e` trick as we did in the beginning:
 E=(e,Γ)=>+e?Γ(e):e.f?E(e.f,Γ)(E(e.x,Γ)):x=>E(e.b,v=>v==e.λ?x:Γ(v))
 ```
 
-Which, at first glance, seemed to me like a pretty good ending point. So I very naïvely thought that it could not be compressed any further, I included it in any bio description I could think of, and then left the project there on *December 7th 2019*.
+At first glance, this seemed to me like a pretty good ending point. So I very naïvely thought that it could not be compressed any further, included it in any bio description I could think of, and then left the project there on *December 7th 2019*.
 
-I decided to pick it up again on *January 10th 2020* to see if I could, admittedly already quitle hopelessly, try to golf it down even more.
+I decided to pick it up again on *January 10th 2020* to see if I could, admittedly already quite hopelessly, try to golf it down even more.
 To my own surprise, I noticed that quite trivially we can further shorten the equality check in the new environment using a simple subtraction, since we can force `v` and `e.λ` in our representation to be numbers, used as variable names. Technically, this must then use a different representation that only allows variable names to be numbers, even though we could have also used strings as variables names up until now. But now we can check equality with subtraction, stripping down one more character:
 
 ```js
 E=(e,Γ)=>+e?Γ(e):e.f?E(e.f,Γ)(E(e.x,Γ)):x=>E(e.b,v=>v-e.λ?Γ(v):x)
 ```
 
-Later that evening, I tried tackling again if I could find a way to express even more succintly the environment representation and steering away from the lambda-based environment, for example using an array or an object in order to still have the same short 4-characters direct access, switching from `Γ(e)` to `Γ[e]`. I tried thinking about how I could work on this using some sort of (immutable) array extension through adding a value. It then struck me that we can use an object as our environment and then extend it using the spread notation with the old environment, without having to resort to any particular (and verbose) method that copies the environment to extend it. I just needed to find a way to inject a variable key (since the user-selected variable name is contained in `e.λ`) within the object in a compact way, and sure enough, JavaScript has a quite obscure but intuitive answer for this, `{[name]: value}` with `name` being a variable containing the key.
+Later that evening, I tried tackling this expression again to see if I could find a way to express even more succintly the environment representation and steering away from the lambda-based environment. This can be done for example with an array or an object, in order to still have the same short 4-characters direct access and simply switching from `Γ(e)` to `Γ[e]`. I tried thinking about how I could work on this using some sort of (immutable) array extension through adding a value; it then struck me that we can use an object as our environment and then extend it using the spread notation with the old environment, without having to resort to any particular (and verbose) method that copies the environment to extend it. I just needed to find a way to inject a variable key (since the user-selected variable name is contained in `e.λ`) within the object in a compact way, and sure enough, JavaScript has an intuitive (and a bit obscure) answer for this, `{[name]: value}` with `name` being a variable containing the key.
 
 ```js
 E=(e,Γ)=>+e?Γ[e]:e.f?E(e.f,Γ)(E(e.x,Γ)):x=>E(e.b,{...Γ,[e.λ]:x})
+
 ```
 
 This final change in environment brings us to *64 characters*.
 
 ## Back to De Bruijn indices, with arrays
 
-Inspired by this change, I then tried doing that same day a similar thing but with arrays instad of objects: if we extend the environment by turning again to the spread notation `[x,...Γ]`, something remarkable happens. It quite interestingly turns out we ***inadvertently*** return to the De Bruijn indices! This is because now the variables are again naturally expressed relative to their depth within the abstraction, since we append them at the beginning of the array. We then need to be modifying our representation, firstly, in terms of variable names (since they'll be relative indices in the environment, instead of "absolute" keys), and secondly, since we won't need to be referring to the lambda argument `e.λ` anymore, we can reuse it to indicate the lambda body for purely aesthetic reasons:
+Inspired by this change, I then tried doing a similar thing but with arrays instad of objects: if we extend the environment by turning again to the spread notation `[x,...Γ]`, something remarkable happens. It quite interestingly turns out we ***inadvertently*** return to the De Bruijn indices! This is because of the fact that now variables are again naturally expressed as indices relative to their depth within the abstraction, since we progressively append them at the beginning of the array. We now need to modify our representation in terms of variable names, since they'll be relative indices in the environment instead of "absolute" keys. Since we won't need to be referring to the lambda argument `e.λ` anymore, we can reuse it to indicate the lambda body for purely aesthetic reasons.
 
-However, this method has its drawbacks.
+This method, however, has its drawbacks.
 
 1. Now that the environment is an array, indexing it necessarily must use indices starting from zero. This requires to change our representation again, since we've been using indices starting from one. However, by doing so, we lose the possibility to quickly check if the argument is a number: `+e` evaluates to false if `e` is zero, so our code will think that we are dealing with a structure and not with a numeric value.
 
@@ -192,7 +193,7 @@ This does not have a difficult solution, since we can move all the checks for ob
 E=(e,Γ=[])=>+e?Γ[e-1]:e.f?E(e.f,Γ)(E(e.x,Γ)):x=>E(e.λ,[x,...Γ])
 ```
 
-2. When we first used all the previous types of environment, we could always allow the function to have its environment `Γ` unspecified, since it didn't really alter the behaviour of the code except in the case of errors and badly-formed expressions. But now having `Γ` as `undefined` and then trying to extending it brings us to `[x,...Γ]`. which unfortunately raises the error `Uncaught TypeError: undefined is not iterable`.
+2. When we first used all the previous types of environment, we could always allow the function to have its environment `Γ` as `undefined`, since it didn't really alter the behaviour of the code except in the case of errors and badly-formed expressions. But now having `Γ` as `undefined` and then trying to extend it brings us to `[x,...Γ]`, which unfortunately raises the error `Uncaught TypeError: undefined is not iterable`.
 
 This again does not have a difficult solution, but it does take away a bit of bytes, since we need to be specifying `Γ=[]` in the beginning of the function. Note that we need to be using an iterable object: the shorter possibility of supplying a smaller object `0` would not work.
 
@@ -202,11 +203,15 @@ By combining these two points, we finally get:
 E=(e,Γ=[])=>e.f?E(e.f,Γ)(E(e.x,Γ)):e.λ?x=>E(e.λ,[x,...Γ]):Γ[e]
 ```
 
-However, the workaround on checking first the object fields made me think: what if instead of directly using the number as test we could actually change the representation appropriately in order to, in a way, "encapsulate" the numeric value so that it can be safely checked?
+This brings us two characters less than the previous solution with objects and lambdas.
 
-This reasoning enlightened and reminded me of the existence of *array pattern matching* in JavaScript.
+However, our use of object fields made me wonder: what if we could actually change the representation appropriately in order to, in a way, "encapsulate" the numeric value so that it can be safely checked?
 
-Array pattern matching can be simply expressed as a function `([a,b],c) => ...` which automatically takes and gives names to the two "sub-elements" of the array structure that we give as parameters. This allows us to circumvent the need to use field names to access the various parts of the expression.
+This reminded me of the existence of *array pattern matching* in JavaScript.
+
+## Pattern matching
+
+Array pattern matching can be simply expressed as a function `([a,b],c) => ...` which automatically takes and gives names to the two "sub-elements" of the array structure given as parameters. This allows us to circumvent the need to use field names to access the various parts of the expression.
 
 But we can also notice that, in fact, this representation is all that we really need to be able represent the entirety of our expression cases:
 - we can represent `[n, undefined]` as a variable with a zero-indexed De Bruijn index `n`,
@@ -217,7 +222,7 @@ But we can also notice that, in fact, this representation is all that we really 
 
 The choice in the position of the arguments for the λ-abstraction is motivated by the fact that `[, [, [, [, ... ]]]]` nicely parses into a series of λ-abstractions in the way we expect.
 
-Semantically, even the checks will further simplify, since we won't be needing to check for numbers nor object fields being truthy, and we can instead act directly on the two named array elements and check if they are `undefined`.
+Semantically, the checks also further simplify, since we won't be needing to check for numbers nor object fields being truthy, and we can instead act directly on the two named array elements to check if they are `undefined`.
 
 Here is the final code:
 
