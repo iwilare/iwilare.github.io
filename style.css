@@ -1,15 +1,15 @@
 body {
-	margin-left: 30%;
-	margin-right: 30%;
-	font-family: "Yu Gothic", sans-serif;
+    margin-left: 30%;
+    margin-right: 30%;
+    font-family: "Yu Gothic", sans-serif;
 }
-a { 
-	color: rgb(12.5%, 12.5%, 12.5%);
-	text-decoration: dotted underline;
+a {
+    color: rgb(12.5%, 12.5%, 12.5%);
+    text-decoration: dotted underline;
 }
 a:visited {
-	color: rgb(37.5%, 37.5%, 37.5%);
+    color: rgb(37.5%, 37.5%, 37.5%);
 }
 a:hover {
-	color: rgb(62.5%, 62.5%, 62.5%);
+    color: rgb(62.5%, 62.5%, 62.5%);
 }

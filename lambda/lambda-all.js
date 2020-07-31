@@ -11,13 +11,13 @@ let reprT = {t:0,λ: {t:1,f: {t:1,f: 0, x: {t:0,λ: {t:0,λ: {t:0,λ: {t:1,f: {t
 // 0-index De Bruijn, [index,] term, [,body] abstraction, [function, argument] application
 let reprZ = [,        [   [  [0,],  [,        [,        [,        [   [  [2,], [0,]],  [  [1,], [0,]]]]]]],  [,        [,       [1,]]]]]
 
-let tests = 
+let tests =
     [ [repr1, () => { E=(e,Γ)=>{if(typeof e=='number'){while(--e){Γ=Γ[1]}return Γ[0]}return e[0]==0?(a)=>E(e[1],[a,Γ]):E(e[0],Γ)(E(e[1],Γ))} ;return E }]
     , [repr1, () => { E=(e,Γ)=>{if(+e){while(--e){Γ=Γ[1]}return Γ[0]}return e[0]?E(e[0],Γ)(E(e[1],Γ)):x=>E(e[1],[x,Γ])} ;return E }]
     , [repr1, () => { E=(e,Γ)=> {
                         if(e == 1)
                             return Γ[0]
-                        else if(e > 0) 
+                        else if(e > 0)
                             return E(e-1, Γ[1])
                         else if(e[0] == 0)
                             return a => E(e[1], [a,Γ])
@@ -25,38 +25,38 @@ let tests =
                             return E(e[0], Γ)(E(e[1], Γ))
                     }
                     ;return E}]
-    , [repr1, () => { 
+    , [repr1, () => {
 E=(e,Γ)=>e==1?Γ[0]:e>0?E(e-1,Γ[1]):e[0]==0?a=>E(e[1],[a,Γ]):E(e[0],Γ)(E(e[1],Γ))                  ;return E }]
-    , [repr1, () => { 
+    , [repr1, () => {
 E=(e,Γ)=>+e?e==1?Γ[0]:E(e-1,Γ[1]):e[0]==0?x=>E(e[1],[x,Γ]):E(e[0],Γ)(E(e[1],Γ))                   ;return E }]
-    , [repr1, () => { 
+    , [repr1, () => {
 E=(e,Γ)=>+e?e==1?Γ[0]:E(e-1,Γ[1]):e[0]?E(e[0],Γ)(E(e[1],Γ)):x=>E(e[1],[x,Γ])                      ;return E }]
-    , [repr1, () => { 
+    , [repr1, () => {
 E=(e,Γ)=>+e?--e?E(e,Γ[1]):Γ[0]:e[0]?E(e[0],Γ)(E(e[1],Γ)):x=>E(e[1],[x,Γ])                         ;return E }]
-    , [repr2, () => { 
+    , [repr2, () => {
 E=(e,Γ)=>+e?--e?E(e,Γ[1]):Γ[0]:e.f?E(e.f,Γ)(E(e.x,Γ)):x=>E(e.λ,[x,Γ])                             ;return E }]
-    , [reprN, () => {                                                                             
+    , [reprN, () => {
 E=(e,Γ)=>e>0?Γ(e):e.f?E(e.f,Γ)(E(e.x,Γ)):x=>E(e.b,v=>v==e.λ?x:Γ(v))                               ;return E }]
-    , [reprN, () => { 
+    , [reprN, () => {
 E=(e,Γ)=>+e?Γ(e):e.f?E(e.f,Γ)(E(e.x,Γ)):x=>E(e.b,v=>v==e.λ?x:Γ(v))                                ;return E }]
-    , [reprN, () => { 
+    , [reprN, () => {
 E=(e,Γ)=>+e?Γ(e):e.f?E(e.f,Γ)(E(e.x,Γ)):x=>E(e.b,v=>v-e.λ?Γ(v):x)                                 ;return E }]
-    , [reprN, () => { 
+    , [reprN, () => {
 E=(e,Γ)=>+e?Γ[e]:e.f?E(e.f,Γ)(E(e.x,Γ)):x=>E(e.b,{...Γ,[e.λ]:x})                                  ;return E }]
-    , [repr2, () => { 
+    , [repr2, () => {
 E=(e,Γ=[])=>+e?Γ[e-1]:e.f?E(e.f,Γ)(E(e.x,Γ)):x=>E(e.λ,[x,...Γ])                                   ;return E }]
-    , [reprF, () => { 
+    , [reprF, () => {
 E=(e,Γ=[])=>e.λ?x=>E(e.λ,[x,...Γ]):Γ[e]||E(e.f,Γ)(E(e.x,Γ))                                       ;return E }]
-    , [null,  () => { 
+    , [null,  () => {
 E=([a,b],Γ=[])=>b?Γ[e]||E(a,Γ)(E(b,Γ)):x=>E(e[2],[x,...Γ])                                        ;return E }]
-    , [null,  () => { 
+    , [null,  () => {
 E=([a,b,c],Γ=[])=>b?Γ[e]||E(a,Γ)(E(b,Γ)):x=>E(c,[x,...Γ])                                         ;return E }]
-    , [reprZ, () => { 
+    , [reprZ, () => {
 E=([a,b],Γ=[])=>b?a?E(a,Γ)(E(b,Γ)):x=>E(b,[x,...Γ]):Γ[a]                                          ;return E }]
     ]
-    
+
 function test() {
-    tests.forEach(([testStructure, evalSupplier], i) => 
+    tests.forEach(([testStructure, evalSupplier], i) =>
         testStructure == null ? null : testFunctionality(i, evalSupplier()(testStructure)))
 }
 function testFunctionality(i, iota) {
