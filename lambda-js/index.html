@@ -220,16 +220,15 @@ Here is the final code:
 E=([a,b],Γ=[])=>b?a?E(a,Γ)(E(b,Γ)):x=>E(b,[x,...Γ]):Γ[a]
 ```
 
-This brings us to a very surprising reduction with just *56-characters*!
+This brings us to a very surprising reduction with just *56 characters*!
 
-It seems to me that we (finally) reduced everything to its truly most barebones representation. I sincerely had no idea I would have ended up with such a simplification, especially considering that every single reduction felt like that was it, there was no further possible way of taking away any more characters.
+It feels that we (finally) reduced everything to its truly most barebones representation. I sincerely had no idea I would have ended up with such a simplification, especially considering that every single reduction felt like that was it, there was no further possible way of taking away any more characters.
 
 This last snippet highlights the fundamental concepts of λ-calculus interpretation, both in its minimal syntax:
 
 - variables,    `[a,]`
 - abstractions, `[,b]`
 - applications, `[a,b]`
-
 
 and in its naturally corresponding semantics:
 
