@@ -4,12 +4,13 @@ body {
     font-family: "Yu Gothic", sans-serif;
 }
 a {
-    color: rgb(12.5%, 12.5%, 12.5%);
+    color: rgb(20, 20, 20);
     text-decoration: dotted underline;
+    text-underline-offset: 0.2em;
 }
 a:visited {
-    color: rgb(37.5%, 37.5%, 37.5%);
+    color: grey;
 }
 a:hover {
-    color: rgb(62.5%, 62.5%, 62.5%);
+    color: silver;
 }
