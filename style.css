@@ -1,16 +1,126 @@
+:root {
+    --dark:  #202020;
+    --light: #E0E0E0;
+}
+@media (prefers-color-scheme: light) {
+    :root {
+        --text:            black;
+        --background:      white;
+        --symbol:          var(--dark);
+        --link:            var(--text);
+        --link-visited:    gray;
+        --link-hover:      silver;
+        --code-border:     var(--light);
+        --code-background: #F8F8F8;
+        --scrollbar:       silver;
+    }
+}
+@media (prefers-color-scheme: dark) {
+    :root {
+        --text:            var(--light);
+        --background:      var(--dark);
+        --symbol:          var(--light);
+        --link:            var(--text);
+        --link-visited:    silver;
+        --link-hover:      white;
+        --code-border:     #4B4B4B;
+        --code-background: #272822;
+        --scrollbar:       var(--light);
+    }
+}
+::-webkit-scrollbar {
+    width: 10px;
+    height: 5px;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--scrollbar);
+    border-radius: 6px;
+}
+::-webkit-scrollbar-track {
+    background: var(--background);
+    border-radius: 6px;
+}
+::selection {
+    color: var(--background);
+    background: var(--text);
+}
 body {
-    margin-left: 30%;
-    margin-right: 30%;
-    font-family: "Yu Gothic", sans-serif;
+    color: var(--text);
+    background-color: var(--background);
+    margin: 5vh auto;
+    max-width: 800px;
+    font-family: "Segoe UI", sans-serif;
+    line-height: 1.5;
+    padding: 0vh 5vh;
+}
+h1, h2, h3, h4, h5, h6 {
+    font-weight: 500;
+    line-height: 1.2;
 }
 a {
-    color: rgb(20, 20, 20);
+    color: var(--link);
     text-decoration: dotted underline;
-    text-underline-offset: 0.2em;
+    text-underline-offset: 0.20em;
 }
 a:visited {
-    color: grey;
+    color: var(--link-visited);
 }
 a:hover {
-    color: silver;
+    color: var(--link-hover);
+}
+pre {
+    margin: 15px 0px;
+    padding: 5px;
+    border: 1px solid var(--code-border);
+    border-radius: 3px;
+    background-color: var(--code-background);
+    overflow: auto;
+}
+code {
+    padding: 2px 4px;
+    border: 1px solid var(--code-border);
+    border-radius: 3px;
+    background-color: var(--code-background);
+}
+pre > code {
+    padding: 0;
+    border: 0;
+}
+@media (prefers-color-scheme: light) {
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.cf { color: #007020; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; } /* Comment */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; } /* Error */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.kw { color: #007020; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+}
+@media (prefers-color-scheme: dark) {
+    code span.at { color: #67b9ef; } /* Attribute */
+    code span.cf { color: #f92472; } /* ControlFlow */
+    code span.ch { color: #d0d0c3; } /* Char */
+    code span.cn { color: #ac80ff; } /* Constant */
+    code span.co { color: #74705d; } /* Comment */
+    code span.dt { color: #67d8ef; } /* DataType */
+    code span.dv { color: #ac80ff; } /* DecVal */
+    code span.er { color: #f83535; } /* Error */
+    code span.fl { color: #ac80ff; } /* Float */
+    code span.fu { color: #67d8ef; } /* Function */
+    code span.kw { color: #f92472; } /* Keyword */
+    code span.op { color: #f92472; } /* Operator */
+    code span.ot { color: #f92472; } /* Other */
+    code span.sc { color: #d0d0c3; } /* SpecialChar */
+    code span.st { color: #d0d0c3; } /* String */
+    code span.va { color: #f92472; } /* Variable */
+    code span.vs { color: #d0d0c3; } /* VerbatimString */
 }

@@ -1,242 +1,134 @@
-<html><title>Writing a minimal JavaScript interpreter for λ-calculus in less than 60 characters</title><link rel="stylesheet" type="text/css" href="../markdown.css"><xmp>
-This post takes inspiration from the wonderful article [The smallest lambda interpreter in JavaScript](http://m1el.github.io/smallest-lambda-eval/) and the related video [William Byrd on "The Most Beautiful Program Ever Written"](https://www.youtube.com/watch?v=OyfBQmvr2Hc).
-I decided to try writing myself such a minimalistic interpreter in vanilla JavaScript, and trying to golf my way through it.
-
-#### Rules
-
-1. The structure of terms can only be a simple JSON structure (i.e.: cyclic objects, closures, or built-in functions are excluded)
-2. The syntax should be able to consistently represent the three fundamental kinds of terms in λ-calculus: variables, applications, and abstractions.
-3. Application must take care of bound and unbound variables appropriately, without creating semantic-breaking substitutions (e.g. capturing unbound variables).
-
-Since there are no restrictions on input structure as long as it constitutes plain data, both [De Bruijn](https://en.wikipedia.org/wiki/De_Bruijn_notation) indices and classic named variables are allowed.
-
-#### Original version
-
-Initially, I wanted to see if I could strip down the original code from the blog. There are many obvious size optimizations that can be done on this code:
-
-```js
-// Credit to http://m1el.github.io/smallest-lambda-eval/
-function Eval(prog, env) {
-    if (typeof prog === 'number') {
-        // lookup a variable
-        while(--prog) { env = env[1]; }
-        return env[0];
-    } else if (prog[0] === 0) {
-        // constructing a new lambda
-        return (arg) => Eval(prog[1], [arg, env]);
-    } else {
-        // function application
-        return Eval(prog[0], env)(Eval(prog[1], env));
-    }
-}
-```
-
-The original author also applies an initial syntactic reduction, without performing any significant semantic change:
-
-```js
-// Credit to http://m1el.github.io/smallest-lambda-eval/
-Eval = function E(p, e) {
- if (typeof p=='number'){while(--p){e=e[1]}return e[0]}
- return p[0]==0?(a)=>E(p[1],[a,e]):E(p[0],e)(E(p[1],e))
-}
-```
-
-For reference, the representation they use is with variables being plain numbers and representing De Bruijn indices starting from 1. `[0, <body>]` represents λ-abstractions, and `[<function>, <argument>]` represents applications.
-
-Their initial desire is to be able to minify the snippet to less than 140 in order to publish it on Twitter. Unfortunately, the code as it is does not fit in 140 characters, since it reaches 142 characters.
-
-We'll try and see if we can improve this.
-
-#### Initial reduction
-
-In our code, the variable names use `e` for "expression" and `Γ` for the environment, mirroring in this latter case its classic use in type theory as type context.
-
-Let's first minify the code without doing any particularly tricky simplification. First, we can take out unneeded spaces and then obviously rename `Eval` to its shorter version `E`. Note that we can easily take out the `function` by using a simple anonymous lambda:
-
-```js
-E=E(p,e){if(typeof p=='number'){while(--p){e=e[1]}return e[0]}return p[0]==0?(a)=>E(p[1],[a,e]):E(p[0],e)(E(p[1],e))}
-```
-
-We can now try doing our first semantic reductions of the code. We can reduce the number type check using the fact that `+e` converts objects into the falsey value `NaN` but leaves numbers untouched. This works in the case of application and abstraction, since they are represented either with arrays or objects and therefore will be checked as `NaN`. We can also exploit the fact that, in JavaScript as in C, `e==0` is logically equivalent to `!e` when `e` is a number. These two simplifications allow to reach *97 characters*:
-
-```js
-E=(e,Γ)=>{if(+e){while(--e){Γ=Γ[1]}return Γ[0]}return e[0]?E(e[0],Γ)(E(e[1],Γ)):x=>E(e[1],[x,Γ])}
-```
-
-As a first big reduction analysis, we can notice how the major obstacle in compressing the snippet is the first line of the original function, with the explicit use of the "while" and "return" keywords.
-This looping seems to be quite intrinsic to the structure of the lambda representation itself, since we need to whittle down the environment on its second element of the tuple in order to get the desired De Bruijn index.
-
-The first intuition I had was that we can try inlining the loop as an argument of the function itself, while recursively decreasing the argument (and the environment) if we can verify that it's a number. In expanded code:
-
-```js
-E = (e,Γ) => {
-    if(e == 1)
-        return Γ[0]
-    else if(e > 0)
-        return E(e-1, Γ[1])
-    else if(e[0] == 0)
-        return a => E(e[1], [a,Γ])
-    else
-        return E(e[0], Γ)(E(e[1], Γ))
-}
-```
-
-Which inlined looks like this:
-
-```js
-E=(e,Γ)=>e==1?Γ[0]:e>0?E(e-1,Γ[1]):e[0]==0?a=>E(e[1],[a,Γ]):E(e[0],Γ)(E(e[1],Γ))
-```
-
-We can use some simple equivalences to further reduce it. By reusing the number type check tricker applied earlier, we can replace `e>0` with `+e`; since `+e` also checks that `e` is a number, we can move `e>0` inside the first branch.
-
-```js
-E=(e,Γ)=>+e?e==1?Γ[0]:E(e-1,Γ[1]):e[0]==0?x=>E(e[1],[x,Γ]):E(e[0],Γ)(E(e[1],Γ))
-```
-
-In the internal expression, we can invert the ternary operator logic by swapping the branches and using the fact that in JavaScript, when `e` is a number, `e==0` is equivalent to verify `e` being falsey:
-
-```js
-E=(e,Γ)=>+e?e==1?Γ[0]:E(e-1,Γ[1]):e[0]?E(e[0],Γ)(E(e[1],Γ)):x=>E(e[1],[x,Γ])
-```
-
-And then, since the indexes start from 1 and are never 0:
-
-```js
-E=(e,Γ)=>+e?e<2?Γ[0]:E(e-1,Γ[1]):e[0]?E(e[0],Γ)(E(e[1],Γ)):x=>E(e[1],[x,Γ])
-```
-
-In the first branch we actually just need the decremented index, to be used in the immediately recursive call. By decrementing the variable already in the check we can both verify if `e` is 1 and at the same time have it decreased for the next call.
-
-```js
-E=(e,Γ)=>+e?--e?E(e,Γ[1]):Γ[0]:e[0]?E(e[0],Γ)(E(e[1],Γ)):x=>E(e[1],[x,Γ])
-```
-
-We can simplify the representation of the input using objects and fields instead of arrays, in order to reduce field lookup to a minimum size:
-
-```js
-E=(e,Γ)=>+e?--e?E(e,Γ[1]):Γ[0]:e.f?E(e.f,Γ)(E(e.x,Γ)):x=>E(e.λ,[x,Γ])
-```
-
-This requires us to change the representation of the lambda terms to instead use an equivalent one with objects. We'll represent applications as objects havings two fields `f` and `x` with the usual meaning of function and argument, and λ-abstractions as objects having a field `b` with the body. Variables are just usual numbers, representing De Bruijn indices starting from one.
-Note that we do not do the same with the environment, since in the end creating the object takes much more space, nullifying the gain from shortening the field access: compare `{v:x,e:Γ}` with `[x,Γ]`.
-
-This brings us at *69 characters*.
-
-#### Named representation, with objects and lambdas
-
-I then tried temporarily scrapping the De Bruijn indices in order to see if the usual named representation could take us any further, since it doesn't need to iterate through the environment when searching a variable and we can instead access it directly.
-
-Switching to a named representation requires us to rethink the environment: the first thing I thought of was trying using the higher-order representation for the environment logic, directly inspired by the [William Byrd lecture](https://www.youtube.com/watch?v=OyfBQmvr2Hc), since it seemed to be quite compact. The environment is simply extended by a lambda that checks if the variable looked up is the same as the new one given, and if not, it defers the lookup to the underlying older environment.
-We can now get the value of a variable in the environment with a direct lookup using `Γ(e)`, instead of having to reach the variable by reducing the environment step by step. This syntax incredibily helps the character count, since we don't need the iteration logic anymore nor the recursive branch.
-
-The code with the environment-augmented lambda now looks like this:
-
-```js
-E = (e,Γ) => {
-    if(e > 0)
-        return Γ(e)
-    else if(e.f !== undefined)
-        return E(e.f, Γ)(E(e.x, Γ))
-    else
-        return x => E(e.b, (v) => v==e.λ ? x : Γ(v))
-}
-```
-
-Which can then be inlined to:
-
-```js
-E=(e,Γ)=>e>0?Γ(e):e.f?E(e.f,Γ)(E(e.x,Γ)):x=>E(e.b,v=>v==e.λ?x:Γ(v))
-```
-
-Applying the same `+e` trick as we did in the beginning:
-
-```js
-E=(e,Γ)=>+e?Γ(e):e.f?E(e.f,Γ)(E(e.x,Γ)):x=>E(e.b,v=>v==e.λ?x:Γ(v))
-```
-
-At first glance, this seemed to me like a pretty good ending point. So I very naïvely thought that it could not be compressed any further, included it in any bio description I could think of, and then left the project there on *December 7th 2019*.
-
-I decided to pick it up again on *January 10th 2020* to see if I could, admittedly already quite hopelessly, try to golf it down even more.
-To my own surprise, I noticed that quite trivially we can further shorten the equality check in the new environment using a simple subtraction, since we can force `v` and `e.λ` in our representation to be numbers, used as variable names. Technically, this must then use a different representation that only allows variable names to be numbers, even though we could have also used strings as variables names up until now. But now we can check equality with subtraction, stripping down one more character:
-
-```js
-E=(e,Γ)=>+e?Γ(e):e.f?E(e.f,Γ)(E(e.x,Γ)):x=>E(e.b,v=>v-e.λ?Γ(v):x)
-```
-
-Later that evening, I tried tackling this expression again to see if I could find a way to express even more succintly the environment representation and steering away from the lambda-based environment. This can be done for example with an array or an object, in order to still have the same short 4-characters direct access and simply switching from `Γ(e)` to `Γ[e]`. I tried thinking about how I could work on this using some sort of (immutable) array extension through adding a value; it then struck me that we can use an object as our environment and then extend it using the spread notation with the old environment, without having to resort to any particular (and verbose) method that copies the environment to extend it. I just needed to find a way to inject a variable key (since the user-selected variable name is contained in `e.λ`) within the object in a compact way, and sure enough, JavaScript has an intuitive (and a bit obscure) answer for this, `{[name]: value}` with `name` being a variable containing the key.
-
-```js
-E=(e,Γ)=>+e?Γ[e]:e.f?E(e.f,Γ)(E(e.x,Γ)):x=>E(e.b,{...Γ,[e.λ]:x})
-```
-
-This final change in environment brings us to *64 characters*.
-
-#### Back to De Bruijn indices, with arrays
-
-Inspired by this change, I then tried doing a similar thing but with arrays instad of objects: if we extend the environment by turning again to the spread notation `[x,...Γ]`, something remarkable happens. It turns out that we ***inadvertently*** return to the De Bruijn indices! This is because of the fact that now variables are again naturally expressed as indices relative to their depth within the abstraction, since we progressively append them at the beginning of the array. We now need to modify our representation in terms of variable names, since they'll be relative indices in the environment instead of "absolute" keys. Since we won't need to be referring to the lambda argument `e.λ` anymore, we can reuse it to indicate the lambda body for purely aesthetic reasons.
-
-This method, however, has its drawbacks.
-
-- Now that the environment is an array, indexing it necessarily must use indices starting from zero. This requires to change our representation again, since we've been using indices starting from one. However, by doing so, we lose the possibility to quickly check if the argument is a number: `+e` evaluates to false if `e` is zero, so our code will think that we are dealing with a structure and not with a numeric value. This does not have a difficult solution, since we can move all the checks for object fields at the beginning, and leaving the numerical case at the end. When just considering the sizes of the characters, we have to spend one extra character.
-(There is also another solution which involves decreasing `e` when accessing the environment and leaving the rest untouched. Unfortunately, it is longer by 1 character.)
-
-```js
-E=(e,Γ=[])=>+e?Γ[e-1]:e.f?E(e.f,Γ)(E(e.x,Γ)):x=>E(e.λ,[x,...Γ])
-```
-
-- When we first used all the previous types of environment, we could always allow the function to have its environment `Γ` as `undefined`, since it didn't really alter the behaviour of the code except in the case of errors and badly-formed expressions. But now having `Γ` as `undefined` and then trying to extend it brings us to `[x,...Γ]`, which unfortunately raises the error `Uncaught TypeError: undefined is not iterable`.
-This again does not have a difficult solution, but it does take away a bit of bytes, since we need to be specifying `Γ=[]` in the beginning of the function. Note that we need to be using an iterable object: the shorter possibility of supplying a smaller object `0` would not work.
-
-By combining these two points, we finally get:
-
-```js
-E=(e,Γ=[])=>e.f?E(e.f,Γ)(E(e.x,Γ)):e.λ?x=>E(e.λ,[x,...Γ]):Γ[e]
-```
-
-This brings us two characters less than the previous solution with objects and lambdas.
-
-However, our use of object fields made me wonder: what if we could actually change the representation appropriately in order to, in a way, "encapsulate" the numeric value so that it can be safely checked?
-
-This reminded me of the existence of *array pattern matching* in JavaScript.
-
-#### Pattern matching
-
-Array pattern matching can be simply expressed as a function `([a,b],c) => ...` which automatically takes and gives names to the two "sub-elements" of the array structure given as parameters. This allows us to circumvent the need to use field names to access the various parts of the expression.
-
-But we can also notice that, in fact, this representation is all that we really need to be able represent the entirety of our expression cases:
-- we can represent `[n, null]` as a variable with a zero-indexed De Bruijn index `n`,
-- use `[null, b]` to be the λ-abstraction with body `b` (where b is another non-`null` lambda term using this same format),
-- and finally represent application with both the two fields occupied, expressing it with `[f, x]` where `f` and `x` are both two non-`null` values indicating the function and the argument of the application.
-
-(Although non essential, note that we can, as an aid in our representation of terms, use `[a,]` as shorthand for `[a, undefined]`, and similarly `[,a]` as shorthand for `[undefined, a]`. Even though `undefined` is strictly speaking not part of the JSON standard, we can use it as an equivalent form for `null`.)
-
-The choice in the position of the arguments for the λ-abstraction is motivated by the fact that `[, [, [, [, ... ]]]]` nicely parses into a series of λ-abstractions in the way we expect.
-
-Semantically, the checks also further simplify, since we won't be needing to check for numbers nor object fields being truthy, and we can instead act directly on the two named array elements to check if they are `undefined`.
-
-Here is the final code:
-
-```js
-E=([a,b],Γ=[])=>b?a?E(a,Γ)(E(b,Γ)):x=>E(b,[x,...Γ]):Γ[a]
-```
-
-This brings us to a very surprising reduction with just *56 characters*!
-
-It feels that we (finally) reduced everything to its truly most barebones representation. I sincerely had no idea I would have ended up with such a simplification, especially considering that every single reduction felt like that was it, there was no further possible way of taking away any more characters.
-
-This last snippet highlights the fundamental concepts of λ-calculus interpretation, both in its minimal syntax:
-
-- variables,    `[a,]`
-- abstractions, `[,b]`
-- applications, `[a,b]`
-
-and in its naturally corresponding semantics:
-
-- variables and environment lookup,       `Γ[a]`
-- abstractions and environment extension, `x=>E(b,[x,...Γ])`
-- applications and recursive evaluation,  `E(a,Γ)(E(b,Γ))`
-
-You can consult the files of this small development at [lambda.js](lambda.js) and [lambda-all.js](lambda-all.js).
-
-*Thank you for reading. Please tell me if you have any further suggestions to improve this!*
-</xmp><script src="https://strapdownjs.com/v/0.2/strapdown.js"></script></html>
+<html>
+<head>
+<title>Writing a minimal JavaScript interpreter for λ‑calculus in less than 60 characters</title>
+<link rel="stylesheet" type="text/css" href="../style.css">
+</head>
+<h1 id="writing-a-minimal-javascript-interpreter-for-λcalculus-in-less-than-60-characters">Writing a minimal JavaScript interpreter for λ‑calculus in less than 60 characters</h1>
+<p>This post takes inspiration from the wonderful article <a href="http://m1el.github.io/smallest-lambda-eval/">The smallest lambda interpreter in JavaScript</a> and the related video <a href="https://www.youtube.com/watch?v=OyfBQmvr2Hc">William Byrd on “The Most Beautiful Program Ever Written”</a>. I decided to try writing myself such a minimalistic interpreter in plain JavaScript, and try to golf my way through it.</p>
+<h2 id="rules">Rules</h2>
+<ol type="1">
+<li>The structure of terms is limited to plain JSON structures (i.e.: cyclic objects, closures, or built-in functions are excluded)</li>
+<li>The syntax should be able to consistently represent the three fundamental kinds of terms in λ‑calculus: variables, applications, and abstractions.</li>
+<li>Evaluation must take care of bound and unbound variables appropriately, without creating semantic-breaking substitutions (e.g. capturing free variables).</li>
+</ol>
+<p>Since there are no restrictions on the input structure as long as it is plain data, both <a href="https://en.wikipedia.org/wiki/De_Bruijn_index">de Bruijn indices</a> and classic named variables are allowed.</p>
+<h2 id="original-version">Original version</h2>
+<p>Initially, I wanted to see if I could strip down the original code from the blog. There are many obvious size optimizations that can be done on this code:</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true"></a><span class="co">// Credit to http://m1el.github.io/smallest-lambda-eval/</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true"></a><span class="kw">function</span> <span class="fu">Eval</span>(prog<span class="op">,</span> env) {</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true"></a>    <span class="cf">if</span> (<span class="kw">typeof</span> prog <span class="op">===</span> <span class="st">&#39;number&#39;</span>) {</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true"></a>        <span class="co">// lookup a variable</span></span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true"></a>        <span class="cf">while</span>(<span class="op">--</span>prog) { env <span class="op">=</span> env[<span class="dv">1</span>]<span class="op">;</span> }</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true"></a>        <span class="cf">return</span> env[<span class="dv">0</span>]<span class="op">;</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true"></a>    } <span class="cf">else</span> <span class="cf">if</span> (prog[<span class="dv">0</span>] <span class="op">===</span> <span class="dv">0</span>) {</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true"></a>        <span class="co">// constructing a new lambda</span></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true"></a>        <span class="cf">return</span> (arg) <span class="kw">=&gt;</span> <span class="fu">Eval</span>(prog[<span class="dv">1</span>]<span class="op">,</span> [arg<span class="op">,</span> env])<span class="op">;</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true"></a>    } <span class="cf">else</span> {</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true"></a>        <span class="co">// function application</span></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true"></a>        <span class="cf">return</span> <span class="fu">Eval</span>(prog[<span class="dv">0</span>]<span class="op">,</span> env)(<span class="fu">Eval</span>(prog[<span class="dv">1</span>]<span class="op">,</span> env))<span class="op">;</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true"></a>    }</span>
+<span id="cb1-14"><a href="#cb1-14" aria-hidden="true"></a>}</span></code></pre></div>
+<p>The original author also applied an initial syntactic reduction, without performing any significant semantic changes:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true"></a><span class="co">// Credit to http://m1el.github.io/smallest-lambda-eval/</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true"></a>Eval <span class="op">=</span> <span class="kw">function</span> <span class="fu">E</span>(p<span class="op">,</span> e) {</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true"></a> <span class="cf">if</span> (<span class="kw">typeof</span> p<span class="op">==</span><span class="st">&#39;number&#39;</span>){<span class="cf">while</span>(<span class="op">--</span>p){e<span class="op">=</span>e[<span class="dv">1</span>]}<span class="cf">return</span> e[<span class="dv">0</span>]}</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true"></a> <span class="cf">return</span> p[<span class="dv">0</span>]<span class="op">==</span><span class="dv">0</span><span class="op">?</span>(a)<span class="kw">=&gt;</span><span class="fu">E</span>(p[<span class="dv">1</span>]<span class="op">,</span>[a<span class="op">,</span>e])<span class="op">:</span><span class="fu">E</span>(p[<span class="dv">0</span>]<span class="op">,</span>e)(<span class="fu">E</span>(p[<span class="dv">1</span>]<span class="op">,</span>e))</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true"></a>}</span></code></pre></div>
+<p>For reference, the representation they use is with variables as plain numbers representing de Bruijn indices starting from 1. The expression <code class="sourceCode javascript">[<span class="dv">0</span><span class="op">,</span> <span class="op">&lt;</span>body<span class="op">&gt;</span>]</code> represents λ-abstractions, and <code class="sourceCode javascript">[<span class="op">&lt;</span>function<span class="op">&gt;,</span> <span class="op">&lt;</span>argument<span class="op">&gt;</span>]</code> represents applications.</p>
+<p>Their initial desire is to be able to minify the snippet to less than 140 in order to publish it on Twitter. Unfortunately, the code as-is reaches 142 characters, and does not fit in a tweet.</p>
+<p>We will try and see if we can improve this.</p>
+<h2 id="initial-reduction">Initial reduction</h2>
+<p>In our code, the variable names use <code class="sourceCode javascript">e</code> for “expression” and <code class="sourceCode javascript">Γ</code> for the environment, mirroring in the latter case its classic use in type theory as type context.</p>
+<p>Let’s first minify the code with some easy syntactic simplifications. First, we can take out unneeded spaces, and then rename <code class="sourceCode javascript">Eval</code> to its shorter version <code class="sourceCode javascript"><span class="cn">E</span></code>. Note that we can easily take out the <code class="sourceCode javascript"><span class="kw">function</span></code> by using an ES6 lambda expression:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a><span class="cn">E</span><span class="op">=</span>(e<span class="op">,</span>Γ)<span class="kw">=&gt;</span>{<span class="cf">if</span>(<span class="kw">typeof</span> e<span class="op">==</span><span class="st">&#39;number&#39;</span>){<span class="cf">while</span>(<span class="op">--</span>e){Γ<span class="op">=</span>Γ[<span class="dv">1</span>]}<span class="cf">return</span> Γ[<span class="dv">0</span>]}<span class="cf">return</span> e[<span class="dv">0</span>]<span class="op">==</span><span class="dv">0</span><span class="op">?</span>(a)<span class="kw">=&gt;</span><span class="fu">E</span>(e[<span class="dv">1</span>]<span class="op">,</span>[a<span class="op">,</span>Γ])<span class="op">:</span><span class="fu">E</span>(e[<span class="dv">0</span>]<span class="op">,</span>Γ)(<span class="fu">E</span>(e[<span class="dv">1</span>]<span class="op">,</span>Γ))}</span></code></pre></div>
+<p>We can now try doing our first semantic reductions of the code. We can shorten the is-number type check using the fact that <code class="sourceCode javascript"><span class="op">+</span>e</code> converts objects into the falsey value <code class="sourceCode javascript"><span class="kw">NaN</span></code> but leaves numbers untouched. This works in the case of application and abstraction, since they are represented either with arrays or objects and therefore will be considered as <code class="sourceCode javascript"><span class="kw">NaN</span></code>. We can also exploit the fact that, in JavaScript as in C, <code class="sourceCode javascript">e<span class="op">==</span><span class="dv">0</span></code> is logically equivalent to <code class="sourceCode javascript"><span class="op">!</span>e</code> when <code class="sourceCode javascript">e</code> is a number. These two simplifications allow us to reach <em>97 characters</em>:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a><span class="cn">E</span><span class="op">=</span>(e<span class="op">,</span>Γ)<span class="kw">=&gt;</span>{<span class="cf">if</span>(<span class="op">+</span>e){<span class="cf">while</span>(<span class="op">--</span>e){Γ<span class="op">=</span>Γ[<span class="dv">1</span>]}<span class="cf">return</span> Γ[<span class="dv">0</span>]}<span class="cf">return</span> e[<span class="dv">0</span>]<span class="op">?</span><span class="fu">E</span>(e[<span class="dv">0</span>]<span class="op">,</span>Γ)(<span class="fu">E</span>(e[<span class="dv">1</span>]<span class="op">,</span>Γ))<span class="op">:</span>x<span class="kw">=&gt;</span><span class="fu">E</span>(e[<span class="dv">1</span>]<span class="op">,</span>[x<span class="op">,</span>Γ])}</span></code></pre></div>
+<p>As a first important reduction analysis, we can notice how the major obstacle in compressing the snippet is the first line of the original function, with the explicit use of the <code class="sourceCode javascript"><span class="cf">while</span></code> and <code class="sourceCode javascript"><span class="cf">return</span></code> keywords. This looping seems to be quite intrinsic to the structure of the lambda representation itself, since we need to shrink down the environment on its second element of the tuple in order to get the desired de Bruijn index.</p>
+<p>The first idea I had was to inline the loop as an argument of the function itself, while recursively decreasing the argument (and the environment) if we can verify that it’s a number. In expanded code:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true"></a><span class="cn">E</span> <span class="op">=</span> (e<span class="op">,</span>Γ) <span class="kw">=&gt;</span> {</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true"></a>    <span class="cf">if</span>(e <span class="op">==</span> <span class="dv">1</span>)</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true"></a>        <span class="cf">return</span> Γ[<span class="dv">0</span>]</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true"></a>    <span class="cf">else</span> <span class="cf">if</span>(e <span class="op">&gt;</span> <span class="dv">0</span>)</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true"></a>        <span class="cf">return</span> <span class="fu">E</span>(e<span class="dv">-1</span><span class="op">,</span> Γ[<span class="dv">1</span>])</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true"></a>    <span class="cf">else</span> <span class="cf">if</span>(e[<span class="dv">0</span>] <span class="op">==</span> <span class="dv">0</span>)</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true"></a>        <span class="cf">return</span> a <span class="kw">=&gt;</span> <span class="fu">E</span>(e[<span class="dv">1</span>]<span class="op">,</span> [a<span class="op">,</span> Γ])</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true"></a>    <span class="cf">else</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true"></a>        <span class="cf">return</span> <span class="fu">E</span>(e[<span class="dv">0</span>]<span class="op">,</span> Γ)(<span class="fu">E</span>(e[<span class="dv">1</span>]<span class="op">,</span> Γ))</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true"></a>}</span></code></pre></div>
+<p>Which can be inlined as follows by just using ternary operators:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true"></a><span class="cn">E</span><span class="op">=</span>(e<span class="op">,</span>Γ)<span class="kw">=&gt;</span>e<span class="op">==</span><span class="dv">1</span><span class="op">?</span>Γ[<span class="dv">0</span>]<span class="op">:</span>e<span class="op">&gt;</span><span class="dv">0</span><span class="op">?</span><span class="fu">E</span>(e<span class="dv">-1</span><span class="op">,</span>Γ[<span class="dv">1</span>])<span class="op">:</span>e[<span class="dv">0</span>]<span class="op">==</span><span class="dv">0</span><span class="op">?</span>a<span class="kw">=&gt;</span><span class="fu">E</span>(e[<span class="dv">1</span>]<span class="op">,</span>[a<span class="op">,</span>Γ])<span class="op">:</span><span class="fu">E</span>(e[<span class="dv">0</span>]<span class="op">,</span>Γ)(<span class="fu">E</span>(e[<span class="dv">1</span>]<span class="op">,</span>Γ))</span></code></pre></div>
+<p>We can apply some simple equivalences to further reduce it. By reusing the is-number checking trick we applied earlier, we can replace <code class="sourceCode javascript">e<span class="op">&gt;</span><span class="dv">0</span></code> with <code>+e</code>; since <code class="sourceCode javascript"><span class="op">+</span>e</code> also checks that <code class="sourceCode javascript">e</code> is a number, we can move <code class="sourceCode javascript">e<span class="op">&gt;</span><span class="dv">0</span></code> inside the first branch.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true"></a><span class="cn">E</span><span class="op">=</span>(e<span class="op">,</span>Γ)<span class="kw">=&gt;</span><span class="op">+</span>e<span class="op">?</span>e<span class="op">==</span><span class="dv">1</span><span class="op">?</span>Γ[<span class="dv">0</span>]<span class="op">:</span><span class="fu">E</span>(e<span class="dv">-1</span><span class="op">,</span>Γ[<span class="dv">1</span>])<span class="op">:</span>e[<span class="dv">0</span>]<span class="op">==</span><span class="dv">0</span><span class="op">?</span>x<span class="kw">=&gt;</span><span class="fu">E</span>(e[<span class="dv">1</span>]<span class="op">,</span>[x<span class="op">,</span>Γ])<span class="op">:</span><span class="fu">E</span>(e[<span class="dv">0</span>]<span class="op">,</span>Γ)(<span class="fu">E</span>(e[<span class="dv">1</span>]<span class="op">,</span>Γ))</span></code></pre></div>
+<p>In the internal expression, we can invert the ternary operator logic by swapping the branches and using the fact that in JavaScript, when <code class="sourceCode javascript">e</code> is a number, <code class="sourceCode javascript">e<span class="op">==</span><span class="dv">0</span></code> is equivalent to verify that <code class="sourceCode javascript">e</code> is falsey:</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true"></a><span class="cn">E</span><span class="op">=</span>(e<span class="op">,</span>Γ)<span class="kw">=&gt;</span><span class="op">+</span>e<span class="op">?</span>e<span class="op">==</span><span class="dv">1</span><span class="op">?</span>Γ[<span class="dv">0</span>]<span class="op">:</span><span class="fu">E</span>(e<span class="dv">-1</span><span class="op">,</span>Γ[<span class="dv">1</span>])<span class="op">:</span>e[<span class="dv">0</span>]<span class="op">?</span><span class="fu">E</span>(e[<span class="dv">0</span>]<span class="op">,</span>Γ)(<span class="fu">E</span>(e[<span class="dv">1</span>]<span class="op">,</span>Γ))<span class="op">:</span>x<span class="kw">=&gt;</span><span class="fu">E</span>(e[<span class="dv">1</span>]<span class="op">,</span>[x<span class="op">,</span>Γ])</span></code></pre></div>
+<p>And then, since the indexes start from 1 and are never 0:</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true"></a><span class="cn">E</span><span class="op">=</span>(e<span class="op">,</span>Γ)<span class="kw">=&gt;</span><span class="op">+</span>e<span class="op">?</span>e<span class="op">&lt;</span><span class="dv">2</span><span class="op">?</span>Γ[<span class="dv">0</span>]<span class="op">:</span><span class="fu">E</span>(e<span class="dv">-1</span><span class="op">,</span>Γ[<span class="dv">1</span>])<span class="op">:</span>e[<span class="dv">0</span>]<span class="op">?</span><span class="fu">E</span>(e[<span class="dv">0</span>]<span class="op">,</span>Γ)(<span class="fu">E</span>(e[<span class="dv">1</span>]<span class="op">,</span>Γ))<span class="op">:</span>x<span class="kw">=&gt;</span><span class="fu">E</span>(e[<span class="dv">1</span>]<span class="op">,</span>[x<span class="op">,</span>Γ])</span></code></pre></div>
+<p>In the first branch we actually just need the decremented index, to be used in the immediately recursive call. By decrementing the variable already in the check, we can verify if <code class="sourceCode javascript">e</code> is 1 and at the same time have it decreased for the next call.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true"></a><span class="cn">E</span><span class="op">=</span>(e<span class="op">,</span>Γ)<span class="kw">=&gt;</span><span class="op">+</span>e<span class="op">?--</span>e<span class="op">?</span><span class="fu">E</span>(e<span class="op">,</span>Γ[<span class="dv">1</span>])<span class="op">:</span>Γ[<span class="dv">0</span>]<span class="op">:</span>e[<span class="dv">0</span>]<span class="op">?</span><span class="fu">E</span>(e[<span class="dv">0</span>]<span class="op">,</span>Γ)(<span class="fu">E</span>(e[<span class="dv">1</span>]<span class="op">,</span>Γ))<span class="op">:</span>x<span class="kw">=&gt;</span><span class="fu">E</span>(e[<span class="dv">1</span>]<span class="op">,</span>[x<span class="op">,</span>Γ])</span></code></pre></div>
+<p>We can simplify the representation of the input by using objects and fields instead of arrays, in order to reduce field lookup to a minimum size:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true"></a><span class="cn">E</span><span class="op">=</span>(e<span class="op">,</span>Γ)<span class="kw">=&gt;</span><span class="op">+</span>e<span class="op">?--</span>e<span class="op">?</span><span class="fu">E</span>(e<span class="op">,</span>Γ[<span class="dv">1</span>])<span class="op">:</span>Γ[<span class="dv">0</span>]<span class="op">:</span>e<span class="op">.</span><span class="at">f</span><span class="op">?</span><span class="fu">E</span>(e<span class="op">.</span><span class="at">f</span><span class="op">,</span>Γ)(<span class="fu">E</span>(e<span class="op">.</span><span class="at">x</span><span class="op">,</span>Γ))<span class="op">:</span>x<span class="kw">=&gt;</span><span class="fu">E</span>(e<span class="op">.</span><span class="at">λ</span><span class="op">,</span>[x<span class="op">,</span>Γ])</span></code></pre></div>
+<p>This requires us to change the representation of the lambda terms to instead use an equivalent one with objects. We’ll represent applications as objects havings two fields <code class="sourceCode javascript">f</code> and <code class="sourceCode javascript">x</code> with the usual meaning of function and argument, and λ-abstractions as objects having a field <code class="sourceCode javascript">b</code> with the body. As before, variables are numbers representing de Bruijn indices starting from one. Note that we don’t do the same with the environment, since creating the object takes much more space. This would in any case nullify what we gained from shortening the field access: compare <code class="sourceCode javascript">{<span class="dt">v</span><span class="op">:</span>x<span class="op">,</span><span class="dt">e</span><span class="op">:</span>Γ}</code> with <code class="sourceCode javascript">[x<span class="op">,</span>Γ]</code>.</p>
+<p>This brings us at <em>69 characters</em>.</p>
+<h2 id="named-representation-with-objects-and-lambdas">Named representation, with objects and lambdas</h2>
+<p>I then tried to temporarily scrap the de Bruijn indices to see if the usual named representation approach could take us any further, since the variable lookup doesn’t need to iterate through the environment and can be done with a direct lookup.</p>
+<p>Switching to a named representation requires us to rethink the environment: inspired by the <a href="https://www.youtube.com/watch?v=OyfBQmvr2Hc">William Byrd lecture</a>, the first thing I thought of was trying to use the higher-order representation for the environment logic, since it seemed to be quite compact. The environment is simply extended by a lambda that checks if the variable looked up is the same as the new one given, and if not, it defers the lookup to the underlying outer environment. We can now get the value of a variable in the environment with a direct lookup using <code class="sourceCode javascript"><span class="fu">Γ</span>(e)</code>, instead of having to reduce the environment step by step. This syntax incredibily helps with the character count, since we don’t need the iteration logic nor the recursive lookup mechanism.</p>
+<p>The code with the environment-augmented lambda now looks like this:</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true"></a><span class="cn">E</span> <span class="op">=</span> (e<span class="op">,</span>Γ) <span class="kw">=&gt;</span> {</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true"></a>    <span class="cf">if</span>(e <span class="op">&gt;</span> <span class="dv">0</span>)</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true"></a>        <span class="cf">return</span> <span class="fu">Γ</span>(e)</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true"></a>    <span class="cf">else</span> <span class="cf">if</span>(e<span class="op">.</span><span class="at">f</span> <span class="op">!==</span> <span class="kw">undefined</span>)</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true"></a>        <span class="cf">return</span> <span class="fu">E</span>(e<span class="op">.</span><span class="at">f</span><span class="op">,</span> Γ)(<span class="fu">E</span>(e<span class="op">.</span><span class="at">x</span><span class="op">,</span> Γ))</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true"></a>    <span class="cf">else</span></span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true"></a>        <span class="cf">return</span> x <span class="kw">=&gt;</span> <span class="fu">E</span>(e<span class="op">.</span><span class="at">b</span><span class="op">,</span> (v) <span class="kw">=&gt;</span> v<span class="op">==</span>e<span class="op">.</span><span class="at">λ</span> <span class="op">?</span> x <span class="op">:</span> <span class="fu">Γ</span>(v))</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true"></a>}</span></code></pre></div>
+<p>Which can then be inlined to:</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true"></a><span class="cn">E</span><span class="op">=</span>(e<span class="op">,</span>Γ)<span class="kw">=&gt;</span>e<span class="op">&gt;</span><span class="dv">0</span><span class="op">?</span><span class="fu">Γ</span>(e)<span class="op">:</span>e<span class="op">.</span><span class="at">f</span><span class="op">?</span><span class="fu">E</span>(e<span class="op">.</span><span class="at">f</span><span class="op">,</span>Γ)(<span class="fu">E</span>(e<span class="op">.</span><span class="at">x</span><span class="op">,</span>Γ))<span class="op">:</span>x<span class="kw">=&gt;</span><span class="fu">E</span>(e<span class="op">.</span><span class="at">b</span><span class="op">,</span>v<span class="kw">=&gt;</span>v<span class="op">==</span>e<span class="op">.</span><span class="at">λ</span><span class="op">?</span>x<span class="op">:</span><span class="fu">Γ</span>(v))</span></code></pre></div>
+<p>Applying the same <code class="sourceCode javascript"><span class="op">+</span>e</code> trick as we did in the beginning:</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true"></a><span class="cn">E</span><span class="op">=</span>(e<span class="op">,</span>Γ)<span class="kw">=&gt;</span><span class="op">+</span>e<span class="op">?</span><span class="fu">Γ</span>(e)<span class="op">:</span>e<span class="op">.</span><span class="at">f</span><span class="op">?</span><span class="fu">E</span>(e<span class="op">.</span><span class="at">f</span><span class="op">,</span>Γ)(<span class="fu">E</span>(e<span class="op">.</span><span class="at">x</span><span class="op">,</span>Γ))<span class="op">:</span>x<span class="kw">=&gt;</span><span class="fu">E</span>(e<span class="op">.</span><span class="at">b</span><span class="op">,</span>v<span class="kw">=&gt;</span>v<span class="op">==</span>e<span class="op">.</span><span class="at">λ</span><span class="op">?</span>x<span class="op">:</span><span class="fu">Γ</span>(v))</span></code></pre></div>
+<p>At first glance, this seemed to me like a pretty good ending point. So I very naïvely thought that it could not be compressed any further, included it in any bio description I could think of, and then left the project there on <em>2019 December 7th</em>.</p>
+<p>I decided to pick it up again on <em>2020 January 10th</em> to see if I could, admittedly quite hopelessly, try to golf it down even more. To my own surprise, I noticed that we can quite trivially shorten the equality check in the new environment using a simple subtraction, since we can force <code class="sourceCode javascript">v</code> and <code class="sourceCode javascript">e<span class="op">.</span><span class="at">λ</span></code> in our representation to be numbers, used as variable names. Technically, this must then use a different representation that only allows variable names to be numbers instead of strings; but now we can check equality with subtraction, stripping down one more character:</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true"></a><span class="cn">E</span><span class="op">=</span>(e<span class="op">,</span>Γ)<span class="kw">=&gt;</span><span class="op">+</span>e<span class="op">?</span><span class="fu">Γ</span>(e)<span class="op">:</span>e<span class="op">.</span><span class="at">f</span><span class="op">?</span><span class="fu">E</span>(e<span class="op">.</span><span class="at">f</span><span class="op">,</span>Γ)(<span class="fu">E</span>(e<span class="op">.</span><span class="at">x</span><span class="op">,</span>Γ))<span class="op">:</span>x<span class="kw">=&gt;</span><span class="fu">E</span>(e<span class="op">.</span><span class="at">b</span><span class="op">,</span>v<span class="kw">=&gt;</span>v<span class="op">-</span>e<span class="op">.</span><span class="at">λ</span><span class="op">?</span><span class="fu">Γ</span>(v)<span class="op">:</span>x)</span></code></pre></div>
+<p>Later that evening, I tried tackling this expression again to see if I could find a way to express the environment representation more succintly and move away from the lambda-based environment. This can be done for example with an array or an object, in order to maintain the same short 4-characters direct access and simply switch from <code class="sourceCode javascript"><span class="fu">Γ</span>(e)</code> to <code class="sourceCode javascript">Γ[e]</code>. I tried thinking about how I could work on this by using some sort of (immutable) object extension that inserts a value; I then noticed that we can use an object as our environment, and then extend it using the spread notation with the previous one. I just needed to find a way to inject a variable key (since the user-selected variable name is contained in <code class="sourceCode javascript">e<span class="op">.</span><span class="at">λ</span></code>) within the object in a compact way, and sure enough, JavaScript has an intuitive (and a bit obscure) answer for this: the syntax <code class="sourceCode javascript">{[name]<span class="op">:</span> value}</code> with <code class="sourceCode javascript">name</code> being a variable containing the key.</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true"></a><span class="cn">E</span><span class="op">=</span>(e<span class="op">,</span>Γ)<span class="kw">=&gt;</span><span class="op">+</span>e<span class="op">?</span>Γ[e]<span class="op">:</span>e<span class="op">.</span><span class="at">f</span><span class="op">?</span><span class="fu">E</span>(e<span class="op">.</span><span class="at">f</span><span class="op">,</span>Γ)(<span class="fu">E</span>(e<span class="op">.</span><span class="at">x</span><span class="op">,</span>Γ))<span class="op">:</span>x<span class="kw">=&gt;</span><span class="fu">E</span>(e<span class="op">.</span><span class="at">b</span><span class="op">,</span>{<span class="op">...</span>Γ<span class="op">,</span>[e<span class="op">.</span><span class="at">λ</span>]<span class="op">:</span>x})</span></code></pre></div>
+<p>This final change in environment brings us to <em>64 characters</em>.</p>
+<h2 id="back-to-de-bruijn-indices-with-arrays">Back to de Bruijn indices, with arrays</h2>
+<p>Inspired by this improvement, I tried doing a similar thing with arrays instad of objects: if we extend the environment by using again to the spread notation <code class="sourceCode javascript">[x<span class="op">,...</span>Γ]</code>, something remarkable happens. It turns out that we <em>inadvertently</em> return to the de Bruijn indices! This is because of the fact that now variables are again expressed naturally as indices relative to their depth within the abstraction, since we progressively append them at the beginning of the array. We now need to modify our representation in terms of variable names, since they’ll be relative indices in the environment instead of “absolute” keys. Since we won’t need to be referring to the abstraction variable <code class="sourceCode javascript">e<span class="op">.</span><span class="at">λ</span></code> anymore, we can reuse it to indicate the body of the abstraction, for purely aesthetic reasons.</p>
+<p>This method, however, has its drawbacks.</p>
+<ul>
+<li>Now that the environment is an array, indexing it necessarily must use indices starting from zero. This requires to change our representation again, since we’ve been using indices starting from one. However, by doing so, we lose the possibility to quickly check if the argument is a number: <code class="sourceCode javascript"><span class="op">+</span>e</code> evaluates to false if <code class="sourceCode javascript">e</code> is zero, so our code will think that we are dealing with a structure and not with a numeric value. This does not have a difficult solution, since we can move all the checks for object fields at the beginning, and leaving the numerical case at the end; we do have to spend one extra character, though. (There is also another solution which involves decreasing <code class="sourceCode javascript">e</code> when accessing the environment and leaving the rest untouched. Unfortunately, it is longer by 1 character.)</li>
+</ul>
+<div class="sourceCode" id="cb17"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true"></a><span class="cn">E</span><span class="op">=</span>(e<span class="op">,</span>Γ<span class="op">=</span>[])<span class="kw">=&gt;</span><span class="op">+</span>e<span class="op">?</span>Γ[e<span class="dv">-1</span>]<span class="op">:</span>e<span class="op">.</span><span class="at">f</span><span class="op">?</span><span class="fu">E</span>(e<span class="op">.</span><span class="at">f</span><span class="op">,</span>Γ)(<span class="fu">E</span>(e<span class="op">.</span><span class="at">x</span><span class="op">,</span>Γ))<span class="op">:</span>x<span class="kw">=&gt;</span><span class="fu">E</span>(e<span class="op">.</span><span class="at">λ</span><span class="op">,</span>[x<span class="op">,...</span>Γ])</span></code></pre></div>
+<ul>
+<li>For all the previous types of environment, we could always allow the function to have its environment <code class="sourceCode javascript">Γ</code> as <code class="sourceCode javascript"><span class="kw">undefined</span></code>, since it didn’t really alter the behaviour of the code except in the case of errors and badly-formed expressions. But now if we have <code class="sourceCode javascript">Γ</code> as <code class="sourceCode javascript"><span class="kw">undefined</span></code> and then we try to extend it with <code class="sourceCode javascript">[x<span class="op">,...</span>Γ]</code>, we unfortunately encounter the error <code class="sourceCode javascript"><span class="er">Uncaught TypeError: undefined is not iterable</span></code>. This again does not have a difficult solution, but it does take away some bytes, since we need to specify <code class="sourceCode javascript">Γ<span class="op">=</span>[]</code> at the beginning of the function. Note that we need to specify an iterable object: the shorter possibility of giving a smaller object <code class="sourceCode javascript"><span class="dv">0</span></code> would not work.</li>
+</ul>
+<p>By combining these two points, we finally get:</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true"></a><span class="cn">E</span><span class="op">=</span>(e<span class="op">,</span>Γ<span class="op">=</span>[])<span class="kw">=&gt;</span>e<span class="op">.</span><span class="at">f</span><span class="op">?</span><span class="fu">E</span>(e<span class="op">.</span><span class="at">f</span><span class="op">,</span>Γ)(<span class="fu">E</span>(e<span class="op">.</span><span class="at">x</span><span class="op">,</span>Γ))<span class="op">:</span>e<span class="op">.</span><span class="at">λ</span><span class="op">?</span>x<span class="kw">=&gt;</span><span class="fu">E</span>(e<span class="op">.</span><span class="at">λ</span><span class="op">,</span>[x<span class="op">,...</span>Γ])<span class="op">:</span>Γ[e]</span></code></pre></div>
+<p>This gets us to 2 characters less than the previous solution with objects and lambdas.</p>
+<p>However, our use of object fields made me wonder if we could change the term representation to, in a way, better “encapsulate” all the possible term cases. I then remembered the existence of <em>array pattern matching</em> in JavaScript.</p>
+<h2 id="pattern-matching">Pattern matching</h2>
+<p>Array pattern matching can be used in function arguments <code class="sourceCode javascript">([a<span class="op">,</span>b]<span class="op">,</span>c) <span class="kw">=&gt;</span> <span class="op">...</span></code> to automatically take and give names to the two “sub-elements” of the array structure given as argument. This allows us to circumvent the need to use field names to access the various parts of the expression.</p>
+<p>The crucial point is that, in fact, this representation is all that we really need to be able to represent the entirety of our expression cases: - we can represent <code class="sourceCode javascript">[n<span class="op">,</span> <span class="kw">null</span>]</code> as a variable with a zero-indexed de Bruijn index <code class="sourceCode javascript">n</code>, - use <code class="sourceCode javascript">[<span class="kw">null</span><span class="op">,</span> b]</code> to indicate the λ-abstraction with body <code class="sourceCode javascript">b</code> (where b is another non-<code class="sourceCode javascript"><span class="kw">null</span></code> lambda term using this same format), - and finally represent application with both the two fields occupied, expressing it with <code class="sourceCode javascript">[f<span class="op">,</span> x]</code> where <code class="sourceCode javascript">f</code> and <code class="sourceCode javascript">x</code> are both two non-<code class="sourceCode javascript"><span class="kw">null</span></code> values indicating the function and the argument of the application.</p>
+<p>(Although non essential, we can, as an aid in our representation of terms, use <code class="sourceCode javascript">[a<span class="op">,</span>]</code> as shorthand for <code class="sourceCode javascript">[a<span class="op">,</span> <span class="kw">undefined</span>]</code>, and similarly <code class="sourceCode javascript">[<span class="op">,</span>a]</code> as shorthand for <code class="sourceCode javascript">[<span class="kw">undefined</span><span class="op">,</span> a]</code>. Even though <code class="sourceCode javascript"><span class="kw">undefined</span></code> is strictly speaking not part of the JSON standard, we can use it as an equivalent form for <code class="sourceCode javascript"><span class="kw">null</span></code>.)</p>
+<p>The choice in the position of the arguments for the λ-abstraction is motivated by the fact that <code class="sourceCode javascript">[<span class="op">,</span> [<span class="op">,</span> [<span class="op">,</span> [<span class="op">,</span> <span class="op">...</span> ]]]]</code> nicely parses into a series of λ-abstractions in the way we expect.</p>
+<p>Semantically, the checks also further simplify, since we don’t need to check for numbers nor object fields being truthy, and we can instead act directly on the two named array elements to check if they are <code class="sourceCode javascript"><span class="kw">undefined</span></code>.</p>
+<p>Here is the final code:</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode js"><code class="sourceCode javascript"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true"></a><span class="cn">E</span><span class="op">=</span>([a<span class="op">,</span>b]<span class="op">,</span>Γ<span class="op">=</span>[])<span class="kw">=&gt;</span>b<span class="op">?</span>a<span class="op">?</span><span class="fu">E</span>(a<span class="op">,</span>Γ)(<span class="fu">E</span>(b<span class="op">,</span>Γ))<span class="op">:</span>x<span class="kw">=&gt;</span><span class="fu">E</span>(b<span class="op">,</span>[x<span class="op">,...</span>Γ])<span class="op">:</span>Γ[a]</span></code></pre></div>
+<p>This brings us to a very surprising reduction with just <em>56 characters</em>!</p>
+<h2 id="conclusion">Conclusion</h2>
+<p>It feels that we (finally) reduced everything to its truly barebones representation. I sincerely had no idea I would have ended up with such a simplification, especially considering that every single reduction felt like that was it, there was no further possible way of taking away any more characters.</p>
+<p>This last snippet highlights the fundamental concepts of λ‑calculus interpretation, both in its minimal syntax:</p>
+<ul>
+<li>variables, <code class="sourceCode javascript">[a<span class="op">,</span>]</code></li>
+<li>abstractions, <code class="sourceCode javascript">[<span class="op">,</span>b]</code></li>
+<li>applications, <code class="sourceCode javascript">[a<span class="op">,</span>b]</code></li>
+</ul>
+<p>and in its naturally corresponding semantics:</p>
+<ul>
+<li>variables and environment lookup, <code class="sourceCode javascript">Γ[a]</code></li>
+<li>abstractions and environment extension, <code class="sourceCode javascript">x<span class="kw">=&gt;</span><span class="fu">E</span>(b<span class="op">,</span>[x<span class="op">,...</span>Γ])</code></li>
+<li>applications and recursive evaluation, <code class="sourceCode javascript"><span class="fu">E</span>(a<span class="op">,</span>Γ)(<span class="fu">E</span>(b<span class="op">,</span>Γ))</code></li>
+</ul>
+<p>You can consult the files of this small development at <a href="lambda.js">lambda.js</a> and <a href="lambda-all.js">lambda-all.js</a>.</p>
+<p><em>Thank you for reading. Please tell me if you have any further suggestions to improve this!</em></p>
+</body>
+</html>

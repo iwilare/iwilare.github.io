@@ -4,11 +4,21 @@
         <title>iwilare</title>
         <link rel="stylesheet" type="text/css" href="style.css">
         <style>
-            * { text-align: center; }
+            * {
+                text-align: center;
+            }
+            #symbol {
+                color: var(--symbol);
+            }
         </style>
     </head>
     <body>
-        <object id=logo style="display: block; margin-left: 50%; transform: translateX(-50%); padding: 100px; width: 350px; height: 350px;" type="image/svg+xml" data="iwilare.svg" ></object>
+        <svg id=symbol xmlns="http://www.w3.org/2000/svg" style="display: block; margin-left: 50%; transform: translateX(-50%); padding: 100px; width: 350px; height: 350px;">
+            <g>
+                <polygon points="38.249256563071725,236.8592356055759 175,0 311.75074343692825,236.85923560557592" fill="currentColor"></polygon>
+                <circle r="34.18768585923207" cx="175" cy="315.8123141407679" fill="currentColor"></circle>
+            </g>
+        </svg>
         <div>
             iwilare
         </div>
@@ -18,9 +28,9 @@
             <a href="https://twitter.com/iwilare">Twitter</a>&nbsp;
         </div>
         <div>
-            <a href="/numpad">&tau;numpad</a>&nbsp;
             <a href="/lambda-js">lambda-js</a>&nbsp;
             <a href="/solitaire">solitaire</a>&nbsp;
+            <a href="/numpad">&tau;-numpad</a>
         </div>
         <footer >
             Copyright &copy; 2021
