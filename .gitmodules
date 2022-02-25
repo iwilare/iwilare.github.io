@@ -4,3 +4,6 @@
 [submodule "solitaire"]
 	path = solitaire
 	url = https://github.com/iwilare/solitaire
+[submodule "planets"]
+	path = planets
+	url = https://github.com/iwilare/planets
