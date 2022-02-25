@@ -1,3 +1,6 @@
 [submodule "sap-tracker"]
 	path = sap-tracker
 	url = https://github.com/iwilare/sap-tracker
+[submodule "solitaire"]
+	path = solitaire
+	url = https://github.com/iwilare/solitaire
