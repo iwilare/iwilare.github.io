@@ -7,3 +7,6 @@
 [submodule "planets"]
 	path = planets
 	url = https://github.com/iwilare/planets
+[submodule "numpad"]
+	path = numpad
+	url = https://github.com/iwilare/numpad
