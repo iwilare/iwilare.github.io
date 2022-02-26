@@ -1,12 +1,16 @@
 [submodule "sap-tracker"]
 	path = sap-tracker
 	url = https://github.com/iwilare/sap-tracker
+	branch = main
 [submodule "solitaire"]
 	path = solitaire
 	url = https://github.com/iwilare/solitaire
+	branch = main
 [submodule "planets"]
 	path = planets
 	url = https://github.com/iwilare/planets
+	branch = main
 [submodule "numpad"]
 	path = numpad
 	url = https://github.com/iwilare/numpad
+	branch = main
