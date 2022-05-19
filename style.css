@@ -8,7 +8,7 @@
         --background:      white;
         --symbol:          var(--dark);
         --link:            var(--text);
-        --link-visited:    gray;
+        --link-visited:    dimgray;
         --link-hover:      silver;
         --code-border:     var(--light);
         --code-background: #F8F8F8;
@@ -29,7 +29,7 @@
     }
 }
 ::-webkit-scrollbar {
-    width: 10px;
+    width: 0.5em;
     height: 5px;
 }
 ::-webkit-scrollbar-thumb {
@@ -49,9 +49,10 @@ body {
     background-color: var(--background);
     margin: 5vh auto;
     max-width: 800px;
-    font-family: "Segoe UI", sans-serif;
+    font-family: system-ui;
     line-height: 1.5;
     padding: 0vh 5vh;
+    scrollbar-width: 10px;
 }
 h1, h2, h3, h4, h5, h6 {
     font-weight: 500;
@@ -70,7 +71,7 @@ a:hover {
 }
 pre {
     margin: 15px 0px;
-    padding: 5px;
+    padding: 10px;
     border: 1px solid var(--code-border);
     border-radius: 3px;
     background-color: var(--code-background);

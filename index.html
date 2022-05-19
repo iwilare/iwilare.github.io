@@ -1,40 +1,100 @@
+<!DOCTYPE html>
 <html>
     <head>
         <meta charset="UTF-8">
         <title>iwilare</title>
         <link rel="stylesheet" type="text/css" href="style.css">
         <style>
-            * {
-                text-align: center;
-            }
             #symbol {
                 color: var(--symbol);
+            }
+            h1, h2, h3, h4, h5, h6 {
+                font-family: Georgia;
             }
         </style>
     </head>
     <body>
-        <svg id=symbol xmlns="http://www.w3.org/2000/svg" style="display: block; margin-left: 50%; transform: translateX(-50%); padding: 100px; width: 350px; height: 350px;">
-            <g>
-                <polygon points="38.249256563071725,236.8592356055759 175,0 311.75074343692825,236.85923560557592" fill="currentColor"></polygon>
-                <circle r="34.18768585923207" cx="175" cy="315.8123141407679" fill="currentColor"></circle>
-            </g>
-        </svg>
-        <div>
-            iwilare
-        </div>
-        <div>
-            <a href="https://github.com/iwilare">GitHub</a>&nbsp;
-            <a href="https://iwilare.tumblr.com">Tumblr</a>&nbsp;
-            <a href="https://twitter.com/iwilare">Twitter</a>&nbsp;
-        </div>
-        <div>
-            <a href="/bsc-thesis.pdf">bsc-thesis</a>&nbsp;
-            <a href="/lambda-js">lambda-js</a>&nbsp;
-            <a href="/solitaire">solitaire</a>&nbsp;
-            <a href="/numpad">&tau;-numpad</a>
-        </div>
-        <footer >
-            Copyright &copy; 2021
+        <header>
+            <svg id=symbol xmlns="http://www.w3.org/2000/svg" style="display: block; margin-left: 50%; transform: translateX(-50%); padding: 70px; width: 350px; height: 350px;">
+                <g>
+                    <polygon points="38.249256563071725,236.8592356055759 175,0 311.75074343692825,236.85923560557592" fill="currentColor"></polygon>
+                    <circle r="34.18768585923207" cx="175" cy="315.8123141407679" fill="currentColor"></circle>
+                </g>
+            </svg>
+        </header>
+        <main>
+            <h1>Andrea Laretto</h1>
+            Hi! I'm Andrea, a Computer Science MSc student at the University of Pisa.
+            I'm interested in dependent type theory, λ-calculus, programming languages, and category theory.
+            I love programming in Agda, Haskell, and Rust.
+            <div>
+                <a href="https://github.com/iwilare">GitHub</a>&nbsp;
+                <a href="https://twitter.com/iwilare">Twitter</a>&nbsp;
+                <a href="https://keybase.io/iwilare">Keybase</a>&nbsp;
+                <!--a href="https://iwilare.tumblr.com">Tumblr</a>&nbsp;-->
+            </div>
+            <h2>Seminars</h2>
+            <ul>
+                <li>
+                    <div>
+                        <div>2022-02-17</div>
+                        <div><a href="provably-correct-software-with-dependent-types.pdf">Provably Correct Software with Dependent Types</a></div>
+                        <div>for the <i>"Software Validation and Verification"</i> 2021/2022 course @ University of Pisa</div>
+                    </div>
+                </li>
+                <li>
+                    <div>
+                        <div>2021-07-23</div>
+                        <div><a href="the-complexity-of-optimal-reduction-and-sharing-graphs.pdf">The Complexity of Optimal Reduction and Sharing Graphs</a></div>
+                        <div>for the <i>"Foundation of Computing"</i> 2020/2021 course @ University of Pisa</div>
+                    </div>
+                </li>
+                <li>
+                    <div>
+                        <div>2021-02-17</div>
+                        <div><a href="non-strict-semantics-with-abstract-machines.pdf">Non-Strict Semantics with Abstract Machines</a></div>
+                        <div>for the <i>"Languages, Compilers, and Interpreters"</i> 2020/2021 course @ University of Pisa</div>
+                    </div>
+                </li>
+            </ul>
+            <h2>Thesis</h2>
+            <ul>
+                <li>
+                    <div>
+                        <div>2020-06-23</div>
+                        <div><a href="bsc-thesis.pdf">Formalizations of the Church-Rosser Theorem in Agda</a></div>
+                        <div>Bachelor's Thesis @ University of Turin (110/110 with honors)</div>
+                        <div><i>Awarded the AILA 3+2 prize for best Italian theses in logic, <a href="http://www.ailalogica.it/premi/premio-32/">announcement</a> (in Italian)</i></div>
+                    </div>
+                </li>
+            </ul>
+            <h2>Misc</h2>
+            <ul>
+                <li>
+                    <div>
+                        <div>2021-04-12</div>
+                        <div><a href="/solitaire">A golfed implementation of Zachtronics' MOLEK-SYNTEZ solitaire</a></div>
+                    </div>
+                </li>
+                <li>
+                    <div>
+                        <div>2020-05-31</div>
+                        <div><a href="/numpad">A mnemonic tool to remember digits of τ based on screen lock patterns</a></div>
+                    </div>
+                </li>
+                <li>
+                    <div>
+                        <div>2020-01-26</div>
+                        <div><a href="/lambda-js">A minimal JavaScript interpreter for λ‑calculus in less than 60 characters</a></div>
+                    </div>
+                </li>
+            </ul>
+            <h2>Contact me</h2>
+            <code style="padding: 10px">((λxy.x@y.com)iwilare)gmail)</code>
+        </main>
+        <footer style="margin-top: 2em">
+            <hr>
+            Copyright &copy; 2022
         </footer>
     </body>
 </html>
