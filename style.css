@@ -57,8 +57,24 @@ body {
 h1, h2, h3, h4, h5, h6 {
     font-weight: 500;
     line-height: 1.2;
+    font-family: Georgia;
+}
+.email {
+    font-family: monospace;
+    font-size: 1.2em;
+}
+.email span {
+    display: inline;
+}
+.email span:nth-child(2n+1) {
+    display: none;
 }
 a {
+    color: var(--link);
+    text-decoration: dotted underline;
+    text-underline-offset: 0.20em;
+}
+details {
     color: var(--link);
     text-decoration: dotted underline;
     text-underline-offset: 0.20em;

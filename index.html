@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html>
     <head>
+        <!--
+            bring back handwritten html!
+            https://jeffhuang.com/designed_to_last/
+        -->
         <meta charset="UTF-8">
         <title>iwilare</title>
         <link rel="stylesheet" type="text/css" href="style.css">
@@ -9,37 +13,55 @@
             #symbol {
                 color: var(--symbol);
             }
-            h1, h2, h3, h4, h5, h6 {
-                font-family: Georgia;
-            }
         </style>
     </head>
     <body>
         <header>
-            <svg id=symbol xmlns="http://www.w3.org/2000/svg" style="display: block; margin-left: 50%; transform: translateX(-50%); padding: 70px; width: 350px; height: 350px;">
-                <g>
-                    <polygon points="38.249256563071725,236.8592356055759 175,0 311.75074343692825,236.85923560557592" fill="currentColor"></polygon>
-                    <circle r="34.18768585923207" cx="175" cy="315.8123141407679" fill="currentColor"></circle>
-                </g>
+            <svg id="symbol" xmlns="http://www.w3.org/2000/svg" style="display: block; margin-left: 50%; transform: translateX(-50%); padding-top: 15%; padding-bottom: 15%; width: 350px; height: 350px;" viewBox="0 0 350 350">
+                <defs>
+                    <linearGradient id="logo-gradient" x1="25%" y1="0%" x2="75%" y2="100%">
+                        <stop offset="0%" stop-color="#7A5FFF">
+                            <animate attributeName="stop-color" values="#7A5FFF; #01FF89; #7A5FFF" dur="7s" repeatCount="indefinite" begin="2s"/>
+                        </stop>
+                        <stop offset="100%" stop-color="#01FF89">
+                            <animate attributeName="stop-color" values="#01FF89; #7A5FFF; #01FF89" dur="7s" repeatCount="indefinite" begin="2s"/>
+                        </stop>
+                    </linearGradient>
+                    <mask id="iwi-mask" x="0" y="0" width="100%" height="100%">
+                        <rect x="0" y="0" width="100%" height="100%" fill="black" />
+                        <g fill="white">
+                            <polygon points="38.249256563071725,236.8592356055759 175,0 311.75074343692825,236.85923560557592"></polygon>
+                            <circle r="34.18768585923207" cx="175" cy="315.8123141407679"></circle>
+                        </g>
+                    </mask>
+                </defs>
+                <rect width="100%" height="100%" fill="white" mask="url(#iwi-mask)" class="fade-in"/>
+                <rect width="100%" height="100%" fill="url(#logo-gradient)" mask="url(#iwi-mask)" class="gradient-animation"/>
             </svg>
         </header>
         <main>
             <h1>Andrea Laretto</h1>
+            <div id="links">
+                <div>
+                    <a href="https://iwilare.com/cv.pdf">[<i class="fa-sharp fa-solid fa-file-pdf" aria-hidden="true"></i> CV]</a>&nbsp;
+                    <a href="https://github.com/iwilare">[<i class="fa-brands fa-github" aria-hidden="true"></i> GitHub]</a>&nbsp;
+                    <a rel="me" href="https://types.pl/@iwilare">[<i class="fa-brands fa-mastodon" aria-hidden="true"></i> Mastodon]</a>&nbsp;
+                    <a href="https://twitter.com/iwilare">[<i class="fa-brands fa-twitter" aria-hidden="true"></i> Twitter]</a>&nbsp;
+                    <br>
+                    <i class="fa-solid fa-envelope" aria-hidden="true"></i> </a>
+                    <!-- technique due to: https://spencermortensen.com/articles/email-obfuscation, sorry, you're gonna have to render this! -->
+                    <span class="email"><span>do-not-contact.an</span><span>iwi</span><span>al</span>la<span>re</span><span>er</span>@g<span>ma</span><span>o</span>il.<span>co</span><span>it</span>m,</span>
+                    <span class="email"><span>not-a-student.an</span><span>and</span><span>rew</span>re<span>a.</span>l<span>l</span>a<span></span>re<span>ee</span>tt<span>o</span>@tal<span>ee</span><span>tec</span>h.<span>n</span>e<span>e</span></span>
+                    &nbsp;
+                    <!-- a small easter egg: <a href="https://iwilare.tumblr.com">Tumblr</a>&nbsp; -->
+                </div>
+            </div>
+            <br>
             Hello, I'm Andrea! I'm a second year PhD student at <a href="https://taltech.ee/en/contacts/andrea-laretto">Tallinn University of Technology</a> in the <a href="https://cs.ioc.ee/lsg/">Logic and Semantics Group</a>,
             under the supervision of <a href="https://niccoloveltri.github.io/">Niccolò Veltri</a> and <a href="https://tetrapharmakon.github.io/">Fosco Loregian</a>.
             I'm interested in type theory, category theory, λ-calculus, programming languages.
             I love programming/proving in Agda, Rust, and Haskell.
             <br>
-            <div id="links">
-                <div>
-                    <a href="#email" onclick="">[<i class="fa-solid fa-envelope" aria-hidden="true"></i> Email]</a>&nbsp;
-                    <a href="https://iwilare.com/cv.pdf">[<i class="fa-sharp fa-solid fa-file-pdf" aria-hidden="true"></i> CV]</a>&nbsp;
-                    <a href="https://github.com/iwilare">[<i class="fa-brands fa-github" aria-hidden="true"></i> GitHub]</a>&nbsp;
-                    <a rel="me" href="https://types.pl/@iwilare">[<i class="fa-brands fa-mastodon" aria-hidden="true"></i> Mastodon]</a>&nbsp;
-                    <a href="https://twitter.com/iwilare">[<i class="fa-brands fa-twitter" aria-hidden="true"></i> Twitter]</a>&nbsp;
-                    <!--a href="https://iwilare.tumblr.com">Tumblr</a>&nbsp;-->
-                </div>
-            </div>
             <h2>Preprints</h2>
             <ul>
                 <li>
@@ -84,12 +106,14 @@
                         <div>2022-10-07</div>
                         <div><a href="msc-thesis.pdf"><i class="fa-sharp fa-regular fa-file-pdf" aria-hidden="true"></i> Counterpart Semantics for Quantified Temporal Logics: Sets, Categories and Agda</a></div>
                         <div>Master's Thesis @ University of Pisa (110/110 with honors)</div>
-                        <div>Talks:</div>
-                        <ul>
-                            <li><a href="wld2023.pdf">[<i class="fa-sharp fa-regular fa-file-pdf" aria-hidden="true"></i> Slides]   </a>2023-01-14 - 🇪🇪 <a href="https://cs.ioc.ee/lsg/wld23/">World Logic Day 2023 - Logic in Estonia Workshop, Tallinn</a></li>
-                            <li><a href="itaca2022.pdf">[<i class="fa-sharp fa-regular fa-file-pdf" aria-hidden="true"></i> Slides] </a>2022-12-21 - 🇮🇹 <a href="https://progetto-itaca.github.io/ItaCa-22/">3rd ItaCa Workshop, Pisa</a></li>
-                            <li><a href="nwpt2022.pdf">[<i class="fa-sharp fa-regular fa-file-pdf" aria-hidden="true"></i> Slides]  </a>2022-11-02 - 🇳🇴 <a href="https://nwpt.w.uib.no/">Nordic Workshop on Programming Theory 2022, Bergen</a></li>
-                        </ul>
+                        <details>
+                            <summary>Click here for talks</summary>
+                            <ul>
+                                <li><a href="wld2023.pdf">[<i class="fa-sharp fa-regular fa-file-pdf" aria-hidden="true"></i> Slides]   </a>2023-01-14 - 🇪🇪 <a href="https://cs.ioc.ee/lsg/wld23/">World Logic Day 2023 - Logic in Estonia Workshop, Tallinn</a></li>
+                                <li><a href="itaca2022.pdf">[<i class="fa-sharp fa-regular fa-file-pdf" aria-hidden="true"></i> Slides] </a>2022-12-21 - 🇮🇹 <a href="https://progetto-itaca.github.io/ItaCa-22/">3rd ItaCa Workshop, Pisa</a></li>
+                                <li><a href="nwpt2022.pdf">[<i class="fa-sharp fa-regular fa-file-pdf" aria-hidden="true"></i> Slides]  </a>2022-11-02 - 🇳🇴 <a href="https://nwpt.w.uib.no/">Nordic Workshop on Programming Theory 2022, Bergen</a></li>
+                            </ul>
+                        </details>
                     </div>
                 </li>
                 <li>
@@ -146,12 +170,11 @@
                     </div>
                 </li>
             </ul>
-            <h2 id="email">Contact</h2>
-            <code style="padding: 10px">((λxy.x@y.com)iwilare)gmail)</code>
-            <code style="padding: 10px">((λxy.x@y.ee)andrea.laretto)taltech)</code>
         </main>
         <footer style="margin-top: 2em">
             <hr>
+            <i>This page is proud to contain no JavaScript.</i>
+            <br>
             Copyright &copy; 2024
         </footer>
     </body>
