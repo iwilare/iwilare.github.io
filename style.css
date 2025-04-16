@@ -48,11 +48,13 @@ body {
     color: var(--text);
     background-color: var(--background);
     margin: 5vh auto;
-    max-width: 800px;
+    max-width: 850px;
     font-family: system-ui;
     line-height: 1.5;
     padding: 0vh 5vh;
     scrollbar-width: 10px;
+    padding: 0 5vh;
+    box-sizing: border-box;
 }
 h1, h2, h3, h4, h5, h6 {
     font-weight: 500;
@@ -140,4 +142,70 @@ pre > code {
     code span.st { color: #d0d0c3; } /* String */
     code span.va { color: #f92472; } /* Variable */
     code span.vs { color: #d0d0c3; } /* VerbatimString */
+}
+
+/* Media query for tablets */
+@media screen and (max-width: 768px) {
+body {
+    padding: 0 4vh;
+    margin: 3vh auto;
+}
+
+#symbol {
+    width: 250px !important;
+    height: 250px !important;
+    padding-top: 10% !important;
+    padding-bottom: 10% !important;
+}
+}
+
+/* Media query for mobile phones */
+@media screen and (max-width: 480px) {
+body {
+    padding: 0 2vh;
+    margin: 2vh auto;
+    font-size: 1.05em;
+}
+
+h1 {
+    font-size: 1.8em;
+}
+
+h2 {
+    font-size: 1.5em;
+}
+
+#symbol {
+    width: 200px !important;
+    height: 200px !important;
+    padding-top: 8% !important;
+    padding-bottom: 8% !important;
+}
+
+#links {
+    word-wrap: break-word;
+}
+
+ul {
+    padding-left: 20px;
+}
+
+.email {
+    font-size: 1em;
+    word-break: break-all;
+}
+}
+
+main {
+    width: 100%;
+}
+
+img, svg {
+    max-width: 100%;
+    height: auto;
+}
+
+pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
 }
