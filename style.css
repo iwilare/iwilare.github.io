@@ -48,7 +48,7 @@ body {
     color: var(--text);
     background-color: var(--background);
     margin: 5vh auto;
-    max-width: 850px;
+    max-width: 880px;
     font-family: system-ui;
     line-height: 1.5;
     padding: 0vh 5vh;
