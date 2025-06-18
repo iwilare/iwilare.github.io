@@ -77,7 +77,7 @@ a {
     text-decoration: dotted underline;
     text-underline-offset: 0.20em;
 }
-details {
+summary {
     color: var(--link);
     text-decoration: dotted underline;
     text-underline-offset: 0.20em;
